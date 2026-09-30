@@ -1,6 +1,3 @@
-// 담당자 4 (등록 후 관리 / 실행·일정 관리 흐름) 소유
-// TODO(담당자 4): 실행 에이전트(외부 캘린더 연동) + 일정 관리 에이전트 알림 로직 연결
-
 // src/screens/ManagementScreen.js
 import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Alert } from "react-native";

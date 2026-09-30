@@ -1,22 +1,21 @@
-// 담당자 1 (공통 파운데이션) 소유
-// 문서 속 일을 "처리해주는" 느낌 - 관공서 서류 / 도장 확인 무드.
-// 화려한 그라데이션 대신 잉크 네이비 + 종이빛 배경 + 확인 도장 그린 포인트.
-
 export const colors = {
   ink: "#1F2E2B", // 본문 텍스트, 헤더
-  paper: "#F1F0EA", // 배경 (종이빛, 따뜻한 크림 아님)
+  paper: "#F7F8FA", // 배경 
   surface: "#FFFFFF", // 카드 표면
-  line: "#DCD8CC", // 구분선, 테두리
-  muted: "#7A7A6E", // 보조 텍스트
+  line: "#E4E7EC", // 구분선, 테두리
+  muted: "#8A94A6", // 보조 텍스트
 
-  stamp: "#2F6F5E", // 확인/신뢰 포인트 (도장 그린)
-  stampSoft: "#E4EFE9",
+  stamp: "#3b6deb", // 파란 도장 - 아이콘 배경/확인 버튼색
+  stampSoft: "#E4EBFD",
 
-  alert: "#B5502E", // 마감 임박 / 확인 필요 (녹슨 주황)
+  alert: "#b52e2e", // 마감 임박 / 확인 필요
   alertSoft: "#F4E4DC",
 
-  gold: "#B08A2E", // 진행중 / 주의
+  gold: "#cf9f2f", // 진행중
   goldSoft: "#F3ECD8",
+
+  green: "#2E7D4F", // 여유 있음 (초록)
+  greenSoft: "#E1F0E6",
 };
 
 export const confidenceColor = (pct) => {

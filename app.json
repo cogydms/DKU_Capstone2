@@ -1,29 +1,27 @@
 {
   "expo": {
-    "name": "ActionDoc",
+    "name": "TTokDoc",
     "slug": "actiondoc-agent",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "backgroundColor": "#F1F0EA"
+      "backgroundColor": "#F7F8FA"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": false
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#1F3A3A"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#3F5BD8"
       }
     },
     "web": {
-      "bundler": "metro"
-    },
-    "plugins": [
-      "expo-status-bar"
-    ]
+      "bundler": "metro",
+      "favicon": "./assets/icon.png"
+    }
   }
 }
