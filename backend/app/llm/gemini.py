@@ -1,0 +1,83 @@
+from __future__ import annotations
+
+import logging
+import re
+import time
+
+from google import genai
+from google.genai import errors, types
+
+from app.config import Settings
+from app.llm.base import (
+    EXTRACTION_SYSTEM_PROMPT,
+    TRANSCRIBE_PROMPT,
+    format_numbered_source,
+)
+from app.schemas import LLMExtraction, Sentence
+
+log = logging.getLogger("actiondoc.gemini")
+
+_PAGE_MARK = re.compile(r"^=+\s*PAGE\s*\d+\s*=+\s*$", re.MULTILINE)
+_RETRY_STATUS = {429, 500, 503, 504}  # 과부하·일시 오류 → 재시도
+_NO_AFC = types.AutomaticFunctionCallingConfig(disable=True)  # 도구 호출 안 씀 (AFC 경고 제거)
+
+
+class GeminiProvider:
+    name = "gemini"
+
+    def __init__(self, settings: Settings):
+        if settings.use_vertex:
+            self.client = genai.Client(
+                vertexai=True, project=settings.gcp_project, location=settings.gcp_location
+            )
+        else:
+            if not settings.gemini_api_key:
+                raise RuntimeError("LLM_PROVIDER=gemini 인데 GEMINI_API_KEY 가 없습니다 (.env 확인)")
+            self.client = genai.Client(api_key=settings.gemini_api_key)
+        # 기본 모델이 과부하일 때 순서대로 시도할 모델 목록
+        self.models = [settings.gemini_model] + [
+            m.strip() for m in settings.gemini_fallback_models.split(",") if m.strip()
+        ]
+        self.retries = settings.gemini_retries
+
+    def _generate(self, contents, config: types.GenerateContentConfig):
+        last: Exception | None = None
+        for model in self.models:
+            for attempt in range(self.retries + 1):
+                try:
+                    return self.client.models.generate_content(model=model, contents=contents, config=config)
+                except errors.APIError as e:
+                    last = e
+                    if e.code not in _RETRY_STATUS:
+                        raise  # 키 오류·모델 없음 등은 재시도해도 소용없음
+                    wait = 2 ** attempt  # 1초, 2초, 4초...
+                    log.warning("Gemini %s %s (시도 %d) → %d초 후 재시도", model, e.code, attempt + 1, wait)
+                    if attempt < self.retries:
+                        time.sleep(wait)
+            log.warning("Gemini %s 계속 실패 → 다음 모델로", model)
+        raise last  # type: ignore[misc]
+
+    def transcribe(self, data: bytes, mime_type: str) -> list[str]:
+        resp = self._generate(
+            [types.Part.from_bytes(data=data, mime_type=mime_type), TRANSCRIBE_PROMPT],
+            types.GenerateContentConfig(temperature=0, automatic_function_calling=_NO_AFC),
+        )
+        text = resp.text or ""
+        pages = [p.strip() for p in _PAGE_MARK.split(text)]
+        return [p for p in pages if p] or [text.strip()]
+
+    def extract(self, sentences: list[Sentence], today: str) -> LLMExtraction:
+        source = format_numbered_source(sentences)
+        resp = self._generate(
+            f"[원문]\n{source}",
+            types.GenerateContentConfig(
+                system_instruction=EXTRACTION_SYSTEM_PROMPT.format(today=today),
+                response_mime_type="application/json",
+                response_schema=LLMExtraction,
+                temperature=0,
+                automatic_function_calling=_NO_AFC,
+            ),
+        )
+        if resp.parsed is not None:
+            return resp.parsed  # type: ignore[return-value]
+        return LLMExtraction.model_validate_json(resp.text)

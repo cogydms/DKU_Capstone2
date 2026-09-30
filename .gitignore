@@ -2,13 +2,4 @@ node_modules/
 .expo/
 .DS_Store
 .idea/
-
-
-# Python
-backend/.venv/
-__pycache__/
-*.pyc
-
-# Environment / secret
 .env
-
