@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
   grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
   tile: {
     width: "47%",
-    aspectRatio: 1.3,
+    paddingVertical: spacing.xl,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,

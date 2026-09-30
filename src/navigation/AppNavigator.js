@@ -1,4 +1,3 @@
-// 담당자 1 (공통 셸) 소유 - 새 화면 추가 시 여기에 등록
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";

@@ -79,7 +79,14 @@ export const managementItems = [
 ];
 
 export const homeUpcoming = [
-  { id: "doc-1", title: "SW인재 장학금", dday: -5 },
-  { id: "doc-2", title: "관리비 고지서", dday: -7 },
-  { id: "doc-3", title: "기숙사 재계약", dday: -18 },
+  { id: "doc-1", title: "SW인재 장학금", dday: -5, progress: 0.6 },
+  { id: "doc-2", title: "관리비 고지서", dday: -13, progress: 0.3 },
+  { id: "doc-3", title: "기숙사 재계약", dday: -18, progress: 0.1 },
+  { id: "doc-4", title: "교내 공모전 참가신청", dday: -2, progress: 0.1 },
+];
+
+export const todayTasks = [
+  { id: "t1", title: "성적증명서 발급", subtitle: "SW인재 장학금", dday: -5, done: false },
+  { id: "t2", title: "신청서 작성", subtitle: "AI 아이디어 공모전", dday: -7, done: false },
+  { id: "t3", title: "포트폴리오 최종 확인", subtitle: "비교과 프로그램", dday: -9, done: false },
 ];

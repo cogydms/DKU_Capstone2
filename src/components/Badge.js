@@ -7,6 +7,7 @@ const TONES = {
   alert: { bg: colors.alertSoft, fg: colors.alert },
   stamp: { bg: colors.stampSoft, fg: colors.stamp },
   gold: { bg: colors.goldSoft, fg: colors.gold },
+  green: { bg: colors.greenSoft, fg: colors.green },
   neutral: { bg: colors.line, fg: colors.muted },
 };
 

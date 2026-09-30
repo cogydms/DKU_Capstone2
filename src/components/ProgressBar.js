@@ -1,12 +1,16 @@
-// 담당자 1 (공통 컴포넌트) 소유
 import React from "react";
 import { View, StyleSheet } from "react-native";
 import { colors } from "../theme/theme";
 
-export default function ProgressBar({ progress = 0 }) {
+export default function ProgressBar({ progress = 0, color = colors.stamp }) {
   return (
     <View style={styles.track}>
-      <View style={[styles.fill, { width: `${Math.round(progress * 100)}%` }]} />
+      <View
+        style={[
+          styles.fill,
+          { width: `${Math.round(progress * 100)}%`, backgroundColor: color },
+        ]}
+      />
     </View>
   );
 }
@@ -18,5 +22,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.line,
     overflow: "hidden",
   },
-  fill: { height: "100%", backgroundColor: colors.stamp, borderRadius: 4 },
+  fill: { height: "100%", borderRadius: 4 },
 });
