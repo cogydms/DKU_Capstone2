@@ -1,0 +1,27 @@
+from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    llm_provider: str = "mock"  # "gemini" | "mock"
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-3.8-flash"
+    gemini_fallback_models: str = ""  # 쉼표로 구분, 예: "모델A,모델B"
+    gemini_retries: int = 2
+    use_vertex: bool = False
+    gcp_project: str | None = None
+    gcp_location: str = "us-central1"
+
+    storage_backend: str = "memory"  # "memory" | "firestore"
+
+    review_threshold: int = 80
+    timezone: str = "Asia/Seoul"
+    cors_origins: list[str] = ["*"]
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
