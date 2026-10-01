@@ -1,4 +1,3 @@
-// 담당자 1 (공통 컴포넌트) 소유
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { colors, radius, spacing } from "../theme/theme";
@@ -23,9 +22,10 @@ export default function Badge({ label, tone = "neutral" }) {
 const styles = StyleSheet.create({
   badge: {
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+    height: 22,
+    justifyContent: "center",
     borderRadius: radius.pill,
     alignSelf: "flex-start",
   },
-  text: { fontSize: 12, fontWeight: "700" },
+  text: { fontSize: 12, lineHeight: 16, fontWeight: "700", includeFontPadding: false },
 });

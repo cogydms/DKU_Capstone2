@@ -14,14 +14,99 @@ def _usable(fields: list[VerifiedField], key: FieldKey) -> list[VerifiedField]:
     return [f for f in fields if f.key == key and f.status != "unverified"]
 
 
-def dday(a: AnalysisResult, today: date) -> int | None:
-    """프론트 규칙: D-5 → -5"""
-    dl = next(iter(_usable(a.fields, FieldKey.DEADLINE)), None)
-    d = parse_iso(dl.normalized_datetime) if dl else None
-    if not d or not d.year:
-        return None
-    return -(date(d.year, d.month, d.day) - today).days
+def fmt_date(iso: str | None, fallback: str = "", show_year: bool = True) -> str:
+    d = parse_iso(iso)
+    if not d:
+        return fallback
+    if show_year and d.year:
+        text = f"{d.year}년 {d.month}월 {d.day}일"
+    else:
+        text = f"{d.month}월 {d.day}일"
+    if d.has_time:
+        text += f" {d.hour:02d}:{d.minute or 0:02d}"
+    return text
 
+def make_item(f: VerifiedField, text: str | None = None) -> dict:
+    return {
+        "fieldId": f.id,
+        "text": text or f.value,
+        "confidence": f.confidence,
+        "status": f.status,
+    }
+
+
+def make_section(key: str, title: str, items: list[dict]) -> dict | None:
+    if not items:
+        return None
+    return {
+        "key": key,
+        "title": title,
+        "items": items,
+        "confidence": min(i["confidence"] for i in items),
+        "needsReview": any(i["status"] in ("needs_review", "unverified") for i in items),
+    }
+
+def build_sections(a: AnalysisResult) -> list[dict]:
+    """AI 분석 결과 화면의 섹션 목록 (시안 순서)"""
+    fs = a.fields
+
+    def date_item(f: VerifiedField) -> dict:
+        return make_item(f, fmt_date(f.normalized_datetime, fallback=f.value))
+
+    start = next(iter(_usable(fs, FieldKey.APPLICATION_START)), None)
+    deadline = next(iter(_usable(fs, FieldKey.DEADLINE)), None)
+    period_title, period_items = "신청 기간", []
+    if start and deadline:
+        s = parse_iso(start.normalized_datetime)
+        e = parse_iso(deadline.normalized_datetime)
+        same_year = bool(s and e and s.year == e.year)
+        text = (
+            fmt_date(start.normalized_datetime, fallback=start.value)
+            + " ~ "
+            + fmt_date(deadline.normalized_datetime, fallback=deadline.value, show_year=not same_year)
+        )
+        weaker = start if start.confidence <= deadline.confidence else deadline
+        period_items = [make_item(weaker, text)]
+    elif deadline:
+        period_title = "신청 마감"
+        period_items = [date_item(deadline)]
+
+    sections = [
+        make_section("criteria", "신청 대상", [make_item(f) for f in _usable(fs, FieldKey.APPLICANT_CRITERIA)]),
+        make_section("period", period_title, period_items),
+        make_section("documents", "필요 서류", [make_item(f) for f in _usable(fs, FieldKey.REQUIRED_DOCUMENT)]),
+        make_section("method", "제출 방법", [make_item(f) for f in _usable(fs, FieldKey.SUBMISSION_METHOD)]),
+        make_section("announcement", "결과 발표일", [date_item(f) for f in _usable(fs, FieldKey.ANNOUNCEMENT_DATE)]),
+        make_section("event", "행사 일정", [date_item(f) for f in _usable(fs, FieldKey.EVENT_DATE)]),
+        make_section("benefit", "지원 내용", [make_item(f) for f in _usable(fs, FieldKey.BENEFIT)]),
+        make_section("contact", "문의처", [make_item(f) for f in _usable(fs, FieldKey.CONTACT)]),
+    ]
+    return [sec for sec in sections if sec is not None]
+
+def particle_ro(word: str) -> str:
+    if not word:
+        return "로"
+    code = ord(word[-1]) - 0xAC00   # '가'로부터 몇 번째 글자인지
+    if not 0 <= code < 11172:        # 한글이 아니면 (영어·숫자 등)
+        return "로"
+    jong = code % 28                 # 받침 번호 (0 = 받침 없음, 8 = ㄹ)
+    if jong == 0 or jong == 8:
+        return "로"
+    return "으로"
+
+
+def build_summary(a: AnalysisResult) -> str:
+    return f"{a.doc_subtype}{particle_ro(a.doc_subtype)} 판단했어요."
+
+
+def build_tags(a: AnalysisResult) -> list[str]:
+    """['장학금', '신청형 문서'] — 세부 유형의 첫 단어 + 대분류"""
+    words = a.doc_subtype.split()
+    tags = []
+    if len(words) > 1:
+        tags.append(words[0])
+    tags.append(f"{a.doc_category.value} 문서")
+    return tags
 
 def to_analysis_detail(a: AnalysisResult) -> dict:
     criteria = _usable(a.fields, FieldKey.APPLICANT_CRITERIA)
@@ -60,6 +145,10 @@ def to_analysis_detail(a: AnalysisResult) -> dict:
         },
         "needsReview": a.needs_review,
         "warnings": a.warnings,
+        
+        "summary": build_summary(a),
+        "tags": build_tags(a),
+        "sections": build_sections(a),
     }
 
 

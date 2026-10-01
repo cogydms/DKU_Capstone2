@@ -1,12 +1,10 @@
-// 담당자 2 (AI 분석 결과 / 입력→분석 흐름) 소유
-// DocumentAdd 에서 받은 API 응답(route.params.view)을 표시. 없으면 목업으로 표시한다.
-import React from "react";
-import { View, Text, ScrollView, StyleSheet } from "react-native";
+import { View, Text, ScrollView, StyleSheet, Image, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import Card from "../components/Card";
 import Badge from "../components/Badge";
 import PrimaryButton from "../components/PrimaryButton";
-import { colors, spacing, type } from "../theme/theme";
+import { colors, spacing, type, radius } from "../theme/theme";
 import { analysisDetail as mockDetail } from "../data/mockData";
 
 const REVIEW_THRESHOLD = 80; // 백엔드 REVIEW_THRESHOLD 와 맞춤
@@ -24,69 +22,227 @@ function Item({ text, confidence, prefix }) {
   );
 }
 
+function Thumbnail({ preview }) {
+  if (preview?.kind === "image" && preview.uri) {
+    return <Image source={{ uri: preview.uri }} style={styles.thumb} resizeMode="cover" />;
+  }
+  const isPdf = preview?.kind === "pdf";
+  return (
+    <View style={[styles.thumb, styles.thumbPlaceholder]}>
+      <Ionicons name={isPdf ? "document-text-outline" : "reader-outline"} size={26} color={colors.muted} />
+      <Text style={styles.thumbLabel}>{isPdf ? "PDF" : "텍스트"}</Text>
+    </View>
+  );
+}
+
+const ISSUE_FG = "#8A6514";
+function parseDeadline(iso) {
+  if (!iso) return null;
+  const [datePart, timePart] = iso.split("T");
+  const [y, m, day] = datePart.split("-").map(Number);
+  const [hh, mm] = timePart ? timePart.split(":").map(Number) : [23, 59];
+  return { date: new Date(y, m - 1, day, hh, mm), hasTime: !!timePart };
+}
+
+function ddayInfo(iso) {
+  const parsed = parseDeadline(iso);
+  if (!parsed) return null;
+  const due = parsed.date;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+  const days = Math.round((dueDay - today) / 86400000);
+
+  const weekday = "일월화수목금토"[due.getDay()];
+  const time = parsed.hasTime
+    ? ` ${String(due.getHours()).padStart(2, "0")}:${String(due.getMinutes()).padStart(2, "0")}`
+    : "";
+  const dateText = `${due.getMonth() + 1}월 ${due.getDate()}일(${weekday})${time} 마감`;
+
+  if (due < now) return { label: "마감 지남", fg: "#fff", badge: colors.muted, bg: "#EEF0F3", dateText };
+  if (days === 0) return { label: "오늘 마감", fg: "#fff", badge: colors.alert, bg: colors.alertSoft, dateText };
+  if (days <= 3) return { label: `D-${days}`, fg: "#fff", badge: colors.alert, bg: colors.alertSoft, dateText };
+  if (days <= 7) return { label: `D-${days}`, fg: "#3D2A00", badge: "#F5A524", bg: "#FFF6DC", dateText };
+  return { label: `D-${days}`, fg: "#fff", badge: colors.stamp, bg: colors.stampSoft, dateText };
+}
+
+function chipTone(pct) {
+  if (pct >= 90) return { bg: colors.greenSoft, fg: colors.green };
+  if (pct >= 80) return { bg: colors.stampSoft, fg: colors.stamp };
+  if (pct >= 60) return { bg: colors.goldSoft, fg: colors.gold };
+  return { bg: colors.alertSoft, fg: colors.alert };
+}
+
+function ConfidenceChip({ pct }) {
+  if (pct == null || pct >= 90) return null;   // ← 90% 이상이면 칩을 숨김
+  const tone = chipTone(pct);
+  return (
+    <View style={[styles.chip, { backgroundColor: tone.bg }]}>
+      <Text style={[styles.chipText, { color: tone.fg }]}>
+        {pct < 80 ? "확인 필요" : "신뢰도"} {pct}%   {/* ← 80 미만이면 "확인 필요" */}
+      </Text>
+    </View>
+  );
+}
+
+const SECTION_ICONS = {
+  criteria: "person",
+  period: "calendar",
+  documents: "document-text",
+  method: "send",
+  announcement: "megaphone",
+  event: "people",
+  benefit: "gift",
+  contact: "call",
+};
+
+function SectionRow({ section, isLast }) {
+  const multi = section.items.length > 1;
+  return (
+    <View style={[styles.row, !isLast && styles.rowDivider]}>
+      <View style={styles.rowHeader}>
+        <View style={styles.rowTitleWrap}>
+          <View style={styles.sectionIcon}>
+            <Ionicons name={SECTION_ICONS[section.key] ?? "ellipse"} size={13} color={colors.stamp} />
+          </View>
+          <Text style={styles.rowTitle}>{section.title}</Text>
+        </View>
+        <ConfidenceChip pct={section.confidence} />
+      </View>
+      {section.items.map((it, i) => (
+        <View key={it.fieldId ?? i} style={styles.itemLine}>
+          {multi && <View style={styles.bulletDot} />}
+          <Text style={styles.itemText}>{it.text}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// 목업(mockData)에는 sections가 없어서 비슷한 모양으로 만들기
+function legacySections(d) {
+  const sec = (key, title, items) =>
+    items.length
+      ? { key, title, items, confidence: Math.min(...items.map((i) => i.confidence ?? 100)) }
+      : null;
+  return [
+    sec("criteria", "신청 대상", d.applicantCriteria.map((c) => ({ text: c.text, confidence: c.confidence }))),
+    d.deadline ? sec("period", "신청 마감", [{ text: d.deadline.text, confidence: d.deadline.confidence }]) : null,
+    sec("documents", "필요 서류", d.requiredDocs.map((t) => ({ text: t }))),
+  ].filter(Boolean);
+}
+
 export default function AIAnalysisScreen({ navigation, route }) {
   const params = route.params ?? {};
   const d = params.view ?? mockDetail;
-  const isMock = !params.view;
   const warnings = d.warnings ?? [];
+  const isMock = !params.view;
+  const summary = d.summary ?? `${d.docType}로 판단했어요.`;
+  const tags = d.tags ?? [d.docType];
+  const sections = d.sections ?? legacySections(d);
+  const fields = params.analysis?.fields ?? [];
+  const unverifiedCount = fields.filter((f) => f.status === "unverified").length;
+  const reviewCount = fields.filter((f) => f.status === "needs_review").length;
+  const hasIssues = unverifiedCount + reviewCount > 0;
+
+  // 경고 띠 문구: "근거를 못 찾은 항목 1개 · 확인이 필요한 항목 2개"
+  const issueText = [
+    unverifiedCount && `근거를 못 찾은 항목 ${unverifiedCount}개`,
+    reviewCount && `확인이 필요한 항목 ${reviewCount}개`,
+  ].filter(Boolean).join(" · ");
+
+  // 나머지 경고 (경고 띠와 겹치는 문구는 뺌)
+  const dday = ddayInfo(d.deadline?.datetime);
+  const notes = warnings.filter(
+    (w) => !w.includes("근거를 찾지 못한") && !(dday && w.includes("이미 지났습니다"))
+  );  
   const next = { documentId: params.documentId, view: params.view, analysis: params.analysis };
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.badgeRow}>
-          <Badge label={d.docType} tone="stamp" />
-          {isMock && <Badge label="예시 데이터" tone="neutral" />}
+        <View style={styles.header}>
+          <View style={styles.donePill}>
+            <Ionicons name="checkmark-circle" size={14} color={colors.green} />
+            <Text style={styles.doneText}>{isMock ? "예시 데이터" : "분석 완료"}</Text>
+          </View>
+          <Text style={styles.summaryText}>{summary}</Text>
         </View>
-        <Text style={[type.h1, { marginTop: spacing.sm }]}>{d.title ?? "AI 분석 결과"}</Text>
-
-        {(d.needsReview || warnings.length > 0) && (
-          <Card style={[styles.card, styles.warnCard]}>
-            <Text style={[type.bodyStrong, { color: colors.alert, marginBottom: spacing.xs }]}>
-              {d.needsReview ? "확인이 필요한 항목이 있어요" : "참고해 주세요"}
-            </Text>
-            {warnings.map((w, i) => (
-              <Text key={i} style={type.body}>· {w}</Text>
-            ))}
-          </Card>
-        )}
-
-        <Card style={styles.card}>
-          <Text style={styles.label}>신청 대상</Text>
-          {d.applicantCriteria.length === 0 && <Text style={type.small}>찾지 못했어요</Text>}
-          {d.applicantCriteria.map((c, i) => (
-            <Item key={i} prefix="· " text={c.text} confidence={c.confidence} />
-          ))}
-        </Card>
-
-        <Card style={styles.card}>
-          <Text style={styles.label}>해야 할 일</Text>
-          {d.todos.length === 0 && <Text style={type.small}>찾지 못했어요</Text>}
-          {d.todos.map((t, i) => (
-            <Item key={t.id} prefix={`${i + 1}. `} text={t.text} confidence={t.confidence} />
-          ))}
-        </Card>
-
-        <Card style={styles.card}>
-          <Text style={styles.label}>마감일</Text>
-          {d.deadline ? (
-            <View style={styles.itemRow}>
-              <Text style={[type.h2, { color: colors.alert, flex: 1 }]}>{d.deadline.text}</Text>
-              {d.deadline.confidence < REVIEW_THRESHOLD && <Badge label="확인 필요" tone="alert" />}
+        <Card style={styles.docCardOuter}>
+          <View style={styles.docCard}>
+            <View style={styles.docInfo}>
+              <Text style={styles.docTitle} numberOfLines={3}>
+                {d.title ?? d.docType}
+              </Text>
+              <View style={styles.tagRow}>
+                {tags.map((t) => (
+                  <Badge key={t} label={t} tone="stamp" />
+                ))}
+              </View>
             </View>
-          ) : (
-            <Text style={type.small}>마감일을 찾지 못했어요. 원문을 확인해 주세요.</Text>
+            <Thumbnail preview={params.preview} />
+          </View>
+
+          {/* D-day 띠 */}
+          {dday && (
+            <View style={[styles.ddayBand, { backgroundColor: dday.bg }]}>
+              <View style={[styles.ddayBadge, { backgroundColor: dday.badge }]}>
+                <Text style={[styles.ddayBadgeText, { color: dday.fg }]}>{dday.label}</Text>
+              </View>
+              <Text style={styles.ddayDate}>{dday.dateText}</Text>
+            </View>
           )}
         </Card>
 
-        <Card style={styles.card}>
-          <Text style={styles.label}>준비물</Text>
-          <Text style={type.body}>{d.requiredDocs.length ? d.requiredDocs.join(" · ") : "없음"}</Text>
+        {hasIssues && (
+          <Pressable
+            style={({ pressed }) => [styles.issueBand, pressed && styles.btnPressed]}
+            onPress={() => navigation.navigate("EvidenceCheck", next)}
+          >
+            <Ionicons name="alert-circle" size={16} color={ISSUE_FG} />
+            <Text style={styles.issueText}>{issueText}</Text>
+            <Text style={styles.issueLink}>원문 보기</Text>
+            <Ionicons name="chevron-forward" size={14} color={ISSUE_FG} />
+          </Pressable>
+        )}
+        {notes.map((w, i) => (
+          <View key={i} style={styles.noteLine}>
+            <Ionicons name="information-circle-outline" size={14} color={colors.muted} />
+            <Text style={styles.noteText}>{w}</Text>
+          </View>
+        ))}
+        {params.analysis && sections.length > 0 && (
+          <View style={styles.noteLine}>
+            <Ionicons name="shield-checkmark" size={14} color={colors.stamp} />
+            <Text style={[styles.noteText, { color: "#2A4596", fontWeight: "600" }]}>
+              {hasIssues ? "표시가 없는 항목은 원문에서 확인했어요" : "모든 항목을 원문에서 확인했어요"}
+            </Text>
+          </View>
+        )}
+
+        <Card style={styles.sectionsCard}>
+          {sections.length === 0 && (
+            <Text style={styles.itemText}>추출된 정보가 없어요. 원문을 확인해 주세요.</Text>
+          )}
+          {sections.map((s, i) => (
+            <SectionRow key={s.key} section={s} isLast={i === sections.length - 1} />
+          ))}
         </Card>
 
-        <PrimaryButton label="원문 근거 확인하기" onPress={() => navigation.navigate("EvidenceCheck", next)} />
-        <View style={{ height: spacing.md }} />
-        <PrimaryButton label="행동 계획 만들기" tone="stamp" onPress={() => navigation.navigate("ActionPlan", next)} />
+        <Pressable
+          style={({ pressed }) => [styles.outlineBtn, pressed && styles.btnPressed]}
+          onPress={() => navigation.navigate("EvidenceCheck", next)}
+        >
+          <Ionicons name="document-text-outline" size={18} color={colors.stamp} />
+          <Text style={styles.outlineBtnText}>원문 근거 보기</Text>
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [styles.fillBtn, pressed && styles.btnPressed]}
+          onPress={() => navigation.navigate("ActionPlan", next)}
+        >
+          <Text style={styles.fillBtnText}>AI 계획 만들기</Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -94,10 +250,123 @@ export default function AIAnalysisScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
-  container: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  header: { alignItems: "center", gap: spacing.xs, marginBottom: spacing.sm },
+  donePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.greenSoft,
+    paddingHorizontal: spacing.sm,
+    height: 24,
+    borderRadius: radius.pill,
+  },
+  doneText: { fontSize: 13, lineHeight: 17, fontWeight: "700", color: colors.green, includeFontPadding: false },
+  summaryText: { fontSize: 15, fontWeight: "500", color: "#4B5565" },
+  docTitle: { fontSize: 18, fontWeight: "700", color: colors.ink, lineHeight: 25, letterSpacing: -0.3 },
+  docCardOuter: {
+    padding: 0,
+    marginTop: spacing.sm,
+    shadowColor: "#1F2E2B",
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  docCard: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md, padding: spacing.md },
+  docInfo: { flex: 1, gap: spacing.sm },
+  tagRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
+  thumb: { width: 72, height: 96, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.line },
+  thumbPlaceholder: { alignItems: "center", justifyContent: "center", backgroundColor: colors.paper, gap: 2 },
+  thumbLabel: { fontSize: 10, fontWeight: "600", color: colors.muted },
+  container: { padding: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xxl },
   badgeRow: { flexDirection: "row", gap: spacing.sm },
   card: { marginTop: spacing.md, marginBottom: spacing.sm },
   warnCard: { backgroundColor: colors.alertSoft, borderColor: colors.alertSoft },
   label: { ...type.label, marginBottom: spacing.xs, textTransform: "none" },
   itemRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: 2 },
+
+    warnBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+    backgroundColor: colors.alertSoft,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.md,
+  },
+  warnTitle: { fontSize: 13, fontWeight: "700", color: colors.alert },
+  warnText: { fontSize: 13, lineHeight: 18, color: colors.ink },
+
+  sectionsCard: { marginTop: spacing.md, paddingVertical: spacing.xs },
+  row: { paddingVertical: spacing.md, gap: 6 },
+  rowDivider: { borderBottomWidth: 1, borderBottomColor: colors.line },
+  rowHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: spacing.sm },
+  rowTitle: { fontSize: 16, fontWeight: "700", color: colors.ink },
+  itemLine: { flexDirection: "row", gap: 8 },
+  bulletDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: colors.muted, marginTop: 8.5 },
+  itemText: { flex: 1, fontSize: 15, lineHeight: 22, color: colors.ink },
+  chip: { height: 22, paddingHorizontal: 8, borderRadius: radius.sm, justifyContent: "center" },
+  chipText: { fontSize: 12, lineHeight: 16, fontWeight: "700", includeFontPadding: false },
+
+  outlineBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 14,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.stamp,
+    backgroundColor: colors.surface,
+    marginTop: spacing.lg,
+  },
+  outlineBtnText: { color: colors.stamp, fontSize: 15, fontWeight: "700" },
+  fillBtn: {
+    alignItems: "center",
+    paddingVertical: 15,
+    borderRadius: radius.md,
+    backgroundColor: colors.stamp,
+    marginTop: spacing.sm,
+  },
+  fillBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  btnPressed: { opacity: 0.8, transform: [{ scale: 0.98 }] },
+  issueBand: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.goldSoft,
+    borderRadius: radius.md,
+    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.md,
+  },
+  issueText: { flex: 1, fontSize: 13, fontWeight: "700", color: ISSUE_FG },
+  issueLink: { fontSize: 12, fontWeight: "600", color: ISSUE_FG },
+  noteLine: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: spacing.sm, paddingHorizontal: 2 },
+  noteText: { flex: 1, fontSize: 12, lineHeight: 17, color: colors.muted },
+
+  ddayBand: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+    borderBottomLeftRadius: radius.lg,
+    borderBottomRightRadius: radius.lg,
+  },
+  ddayBadge: { height: 22, paddingHorizontal: 8, borderRadius: 6, justifyContent: "center" },
+  ddayBadgeText: { fontSize: 13, lineHeight: 17, fontWeight: "800", includeFontPadding: false },
+  ddayDate: { fontSize: 13, fontWeight: "600", color: colors.ink },
+  rowTitleWrap: { flexDirection: "row", alignItems: "center", gap: 8 },
+  sectionIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    backgroundColor: colors.stampSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });
