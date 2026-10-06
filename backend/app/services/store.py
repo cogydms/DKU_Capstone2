@@ -41,10 +41,19 @@ class FirestoreStore:
 
     def __init__(self):
         import firebase_admin
-        from firebase_admin import firestore
+        from firebase_admin import credentials, firestore
+
+        settings = get_settings()
 
         if not firebase_admin._apps:
-            firebase_admin.initialize_app()
+            if settings.google_application_credentials:
+                cred = credentials.Certificate(
+                    settings.google_application_credentials
+                )
+                firebase_admin.initialize_app(cred)
+            else:
+                firebase_admin.initialize_app()
+
         self.db = firestore.client()
         self.col = self.db.collection("documents")
 
