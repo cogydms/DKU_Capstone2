@@ -50,8 +50,21 @@ def from_pdf(data: bytes, llm: LLMProvider) -> SourceDocument:
 
 
 def from_image(data: bytes, mime_type: str, llm: LLMProvider) -> SourceDocument:
+    if mime_type == "image/jpg":
+        mime_type = "image/jpeg"
     if mime_type not in SUPPORTED_IMAGE_TYPES:
         raise IntakeError(f"지원하지 않는 이미지 형식: {mime_type}")
+    # 줄별 위치까지 받을 수 있으면(Gemini) 그걸 쓰고, 안 되면 일반 받아쓰기
+    transcribe_lines = getattr(llm, "transcribe_lines", None)
+    if transcribe_lines is not None:
+        try:
+            lines = transcribe_lines(data, mime_type)
+        except Exception:  # 구조화 응답 실패 등 → 일반 받아쓰기로
+            lines = []
+        if lines:
+            doc = _finalize("image", ["\n".join(ln.text for ln in lines)])
+            doc._image_lines = lines
+            return doc
     return _finalize("image", llm.transcribe(data, mime_type))
 
 
@@ -61,6 +74,9 @@ def from_upload(data: bytes, mime_type: str, filename: str, llm: LLMProvider) ->
         return from_pdf(data, llm)
     if mime_type.startswith("image/"):
         return from_image(data, mime_type, llm)
+    if name.endswith((".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif")):  # 웹에서 type 이 비어 올 때
+        ext = name.rsplit(".", 1)[-1]
+        return from_image(data, "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}", llm)
     if mime_type.startswith("text/") or name.endswith((".txt", ".md")):
         return from_text(data.decode("utf-8", errors="replace"))
     raise IntakeError(f"지원하지 않는 파일 형식: {mime_type or filename}")
