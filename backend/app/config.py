@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     storage_backend: str = "memory"  # "memory" | "firestore"
     google_application_credentials: str | None = None
+    originals_dir: str = "data/originals"  # 원문 근거 화면용 원본 PDF 보관 위치
 
     review_threshold: int = 80
     timezone: str = "Asia/Seoul"
