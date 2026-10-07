@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     gcp_location: str = "us-central1"
 
     storage_backend: str = "memory"  # "memory" | "firestore"
+    google_application_credentials: str | None = None
 
     review_threshold: int = 80
     timezone: str = "Asia/Seoul"

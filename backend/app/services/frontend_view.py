@@ -152,6 +152,25 @@ def to_analysis_detail(a: AnalysisResult) -> dict:
     }
 
 
+def dday(a: AnalysisResult, today: date) -> int | None:
+    """문서의 마감일까지 남은 일수를 프론트용 D-day 값으로 계산한다."""
+    deadline = next(
+        iter(_usable(a.fields, FieldKey.DEADLINE)),
+        None,
+    )
+
+    if not deadline or not deadline.normalized_datetime:
+        return None
+
+    parsed = parse_iso(deadline.normalized_datetime)
+    if not parsed or not parsed.year:
+        return None
+
+    due_date = date(parsed.year, parsed.month, parsed.day)
+
+    return (today - due_date).days
+
+
 def to_list_item(a: AnalysisResult, today: date) -> dict:
     """프론트 mockData.documents 모양"""
     return {
