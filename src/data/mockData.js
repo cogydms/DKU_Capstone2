@@ -54,12 +54,14 @@ export const analysisDetail = {
 
 export const actionPlan = {
   id: "doc-1",
-  title: "2026학년도 SW인재 장학금",
+  title: "SW인재 장학금 신청",
+  // 화면 예시의 D-5를 재현하는 기준일. 실제 데이터 연결 시 현재 날짜로 계산한다.
+  referenceDate: "2026-09-20",
   steps: [
-    { id: "s1", date: "9월 20일", label: "성적증명서 발급", done: true },
-    { id: "s2", date: "9월 22일", label: "신청서 작성", done: true },
-    { id: "s3", date: "9월 24일", label: "최종 확인 및 제출", done: false },
-    { id: "s4", date: "9월 25일 17:00", label: "신청 마감", done: false, isDeadline: true },
+    { id: "s1", date: "2026-09-20", label: "성적증명서 발급", durationMinutes: 10, notes: "", done: true },
+    { id: "s2", date: "2026-09-22", label: "신청서 작성", durationMinutes: 30, notes: "", done: true },
+    { id: "s3", date: "2026-09-24", label: "제출 서류 최종 확인", durationMinutes: null, notes: "필요 서류: 신청서, 성적증명서, 통장 사본", done: false },
+    { id: "s4", date: "2026-09-25", time: "17:00", label: "학생포털 제출", durationMinutes: null, notes: "", done: false, isDeadline: true },
   ],
 };
 
