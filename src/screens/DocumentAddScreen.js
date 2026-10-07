@@ -14,7 +14,7 @@ import { analyzeFile, analyzeText, retryDocument, listDocuments } from "../servi
 
 const INPUT_METHODS = [
   { id: "camera", label: "사진 촬영", desc: "공지문을 바로 찍어서 추가해요",
-    icon: "camera", color: colors.stamp, bg: colors.stampSoft },
+    icon: "camera", color: colors.stamp, bg: colors.stampSoft, mobileOnly: true },
   { id: "library", label: "앨범에서 선택", desc: "저장해 둔 캡처나 사진을 골라요",
     icon: "images", color: colors.green, bg: colors.greenSoft },
   { id: "pdf", label: "PDF 업로드", desc: "공지 PDF 파일을 올려요",
@@ -27,6 +27,8 @@ const INPUT_METHODS = [
 
 // 백엔드 파이프라인 단계에 맞춘 로딩 문구 (실제 진행률이 아니라 대기 중 안내용)
 const STAGES = ["문서를 읽고 있어요…", "해야 할 일을 찾고 있어요…", "원문과 한 줄씩 대조하고 있어요…"];
+const IMAGE_STAGES = ["사진 속 글자를 읽고 있어요…", ...STAGES.slice(1)];
+const IS_WEB = Platform.OS === "web";
 const SAMPLE_NOTICE = `2026학년도 2학기 SW인재 장학금 신청 안내
 
 본교 재학생을 대상으로 2026학년도 SW인재 장학금 신청을 아래와 같이 안내합니다.
@@ -48,17 +50,19 @@ function showError(message) {
 }
 
 function MethodRow({ m, onPress }) {
+  const off = m.soon || (m.mobileOnly && IS_WEB); // 준비 중이거나, 웹에서 못 쓰는 기능(카메라)
+  const desc = m.soon ? "준비 중이에요" : off ? "휴대폰 앱에서만 사용할 수 있어요" : m.desc;
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.row, m.soon && styles.rowSoon, pressed && styles.rowPressed]}
+      style={({ pressed }) => [styles.row, off && styles.rowSoon, pressed && styles.rowPressed]}
     >
-      <View style={[styles.iconBox, { backgroundColor: m.soon ? colors.line : m.bg }]}>
-        <Ionicons name={m.icon} size={22} color={m.soon ? colors.muted : m.color} />
+      <View style={[styles.iconBox, { backgroundColor: off ? colors.line : m.bg }]}>
+        <Ionicons name={m.icon} size={22} color={off ? colors.muted : m.color} />
       </View>
       <View style={styles.rowText}>
-        <Text style={[styles.rowLabel, m.soon && { color: colors.muted }]}>{m.label}</Text>
-        <Text style={styles.rowDesc}>{m.soon ? "준비 중이에요" : m.desc}</Text>
+        <Text style={[styles.rowLabel, off && { color: colors.muted }]}>{m.label}</Text>
+        <Text style={styles.rowDesc}>{desc}</Text>
       </View>
       <Ionicons name="chevron-forward" size={18} color={colors.muted} />
     </Pressable>
@@ -76,6 +80,9 @@ export default function DocumentAddScreen({ navigation }) {
 
   useEffect(() => () => clearInterval(timer.current), []);
 
+  const stages = (kind) => (kind === "image" ? IMAGE_STAGES : STAGES);
+  const [stageList, setStageList] = useState(STAGES);
+
   useFocusEffect(useCallback(() => {
     let active = true;
     // 새로고침·서버 재시작 뒤에도 분석 실패 문서를 재업로드 없이 다시 시도한다.
@@ -87,9 +94,10 @@ export default function DocumentAddScreen({ navigation }) {
   }, []));
 
   const run = async (task, preview) => {
+    setStageList(stages(preview?.kind));
     setAnalyzing(true);
     setStage(0);
-    timer.current = setInterval(() => setStage((s) => Math.min(s + 1, STAGES.length - 1)), 2500);
+    timer.current = setInterval(() => setStage((s) => Math.min(s + 1, STAGES.length - 1)), preview?.kind === "image" ? 4000 : 2500);
     try {
       const { documentId, view, analysis, sourceKind } = await task();
       setPendingDocumentId(null);
@@ -106,6 +114,7 @@ export default function DocumentAddScreen({ navigation }) {
   };
 
   const pickCamera = async () => {
+    if (IS_WEB) return showError("사진 촬영은 휴대폰 앱(Expo Go)에서만 사용할 수 있어요. 웹에서는 '앨범에서 선택'으로 사진 파일을 올려 주세요.");
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) return showError("카메라 권한이 필요해요. 설정에서 허용해 주세요.");
     const r = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
@@ -113,6 +122,10 @@ export default function DocumentAddScreen({ navigation }) {
   };
 
   const pickLibrary = async () => {
+    if (!IS_WEB) {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) return showError("사진 접근 권한이 필요해요. 설정에서 허용해 주세요.");
+    }
     const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
     if (!r.canceled) run(() => analyzeFile(r.assets[0]), { kind: "image", uri: r.assets[0].uri });
   };
@@ -134,7 +147,7 @@ export default function DocumentAddScreen({ navigation }) {
     return (
       <SafeAreaView style={[styles.safe, styles.center]}>
         <ActivityIndicator size="large" color={colors.stamp} />
-        <Text style={styles.analyzingText}>{STAGES[stage]}</Text>
+        <Text style={styles.analyzingText}>{stageList[stage]}</Text>
       </SafeAreaView>
     );
   }

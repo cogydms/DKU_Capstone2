@@ -30,7 +30,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
         <Stack.Screen name="DocumentAdd" component={DocumentAddScreen} options={{ title: "문서 추가" }} />
         <Stack.Screen name="AIAnalysis" component={AIAnalysisScreen} options={{ title: "AI 분석 결과" }} />
-        <Stack.Screen name="EvidenceCheck" component={EvidenceCheckScreen} options={{ title: "원문 근거 확인" }} />
+        <Stack.Screen name="EvidenceCheck" component={EvidenceCheckScreen} options={{ headerShown: false }} />
         <Stack.Screen name="ActionPlan" component={ActionPlanScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Management" component={ManagementScreen} options={{ title: "등록 후 관리" }} />
       </Stack.Navigator>

@@ -6,7 +6,7 @@
 import { Platform } from "react-native";
 
 const BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
-const TIMEOUT_MS = 60000; // Gemini 분석은 수 초~수십 초 걸릴 수 있음
+const TIMEOUT_MS = 120000; // Gemini 분석은 수 초~수십 초 (사진은 글자 받아쓰기까지 해서 더 걸림)
 
 async function request(path, options = {}) {
   const controller = new AbortController();
@@ -42,8 +42,11 @@ export function analyzeText(text) {
 
 // expo-image-picker / expo-document-picker 의 asset 을 그대로 넘기면 된다.
 export async function analyzeFile(asset) {
-  const name = asset.fileName ?? asset.name ?? "upload";
-  const type = asset.mimeType ?? (name.toLowerCase().endsWith(".pdf") ? "application/pdf" : "image/jpeg");
+  const isPdf = (asset.mimeType ?? asset.name ?? "").toLowerCase().includes("pdf");
+  const type = asset.mimeType ?? asset.file?.type ?? (isPdf ? "application/pdf" : "image/jpeg");
+  // 카메라로 찍은 사진은 파일 이름이 없을 수 있어서, 확장자를 붙여 서버가 형식을 알 수 있게 한다
+  const ext = type === "application/pdf" ? "pdf" : type === "image/png" ? "png" : type === "image/webp" ? "webp" : type.startsWith("image/hei") ? "heic" : "jpg";
+  const name = asset.fileName ?? asset.name ?? asset.file?.name ?? `upload.${ext}`;
   const form = new FormData();
   if (Platform.OS === "web") {
     // 웹은 {uri} 객체를 못 보내므로 실제 Blob 으로 변환
@@ -70,6 +73,10 @@ export const updateTodo = (id, completed) => request(`/api/todos/${encodeURIComp
   method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_completed: completed }),
 });
 export const deleteTodo = (id) => request(`/api/todos/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+// 원문 근거 화면: 백엔드가 렌더링한 원본 PDF 페이지 이미지 주소 (page 는 1부터)
+export const pageImageUrl = (id, page, width = 1000) =>
+  `${BASE_URL}/api/documents/${id}/pages/${page}/image?width=${width}`;
 
 // '확인 필요' 항목 승인(수정값 선택) → 갱신된 { view, analysis }
 export function confirmField(docId, fieldId, patch = {}) {
