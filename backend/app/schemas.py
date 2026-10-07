@@ -10,7 +10,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 
 class DocCategory(str, Enum):
@@ -130,10 +130,21 @@ class Sentence(BaseModel):
     char_end: int
 
 
+class LLMLine(BaseModel):
+    text: str = Field(description="이 줄의 글자를 원문 그대로")
+    box_2d: list[int] = Field(description="이 줄을 감싸는 상자 [ymin, xmin, ymax, xmax], 이미지 기준 0~1000 정규화 좌표")
+
+
+class LLMTranscription(BaseModel):
+    lines: list[LLMLine]
+
+
 class SourceDocument(BaseModel):
     source_kind: Literal["text", "pdf", "image"]
     pages: list[str]
     masked_count: int = 0
+    # 이미지 받아쓰기 때 얻은 줄별 위치 (원문 근거 하이라이트용). DB에는 저장하지 않고 원본 파일 옆에 따로 둔다.
+    _image_lines: Optional[list[LLMLine]] = PrivateAttr(default=None)
 
     @property
     def full_text(self) -> str:

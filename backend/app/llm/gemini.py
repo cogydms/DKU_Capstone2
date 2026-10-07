@@ -10,10 +10,11 @@ from google.genai import errors, types
 from app.config import Settings
 from app.llm.base import (
     EXTRACTION_SYSTEM_PROMPT,
+    TRANSCRIBE_LINES_PROMPT,
     TRANSCRIBE_PROMPT,
     format_numbered_source,
 )
-from app.schemas import LLMExtraction, Sentence
+from app.schemas import LLMExtraction, LLMLine, LLMTranscription, Sentence
 
 log = logging.getLogger("actiondoc.gemini")
 
@@ -65,6 +66,20 @@ class GeminiProvider:
         text = resp.text or ""
         pages = [p.strip() for p in _PAGE_MARK.split(text)]
         return [p for p in pages if p] or [text.strip()]
+
+    def transcribe_lines(self, data: bytes, mime_type: str) -> list[LLMLine]:
+        """이미지 한 장을 줄 단위로 받아쓰고, 줄마다 위치 상자(0~1000)를 함께 받는다."""
+        resp = self._generate(
+            [types.Part.from_bytes(data=data, mime_type=mime_type), TRANSCRIBE_LINES_PROMPT],
+            types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=LLMTranscription,
+                temperature=0,
+                automatic_function_calling=_NO_AFC,
+            ),
+        )
+        parsed = resp.parsed if resp.parsed is not None else LLMTranscription.model_validate_json(resp.text)
+        return [ln for ln in parsed.lines if ln.text.strip()]
 
     def extract(self, sentences: list[Sentence], today: str) -> LLMExtraction:
         source = format_numbered_source(sentences)

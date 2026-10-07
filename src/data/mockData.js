@@ -52,6 +52,23 @@ export const analysisDetail = {
   },
 };
 
+// 원문 근거 화면 목업 (백엔드 없이 실행할 때). quote 는 pages 안에 그대로 있어야 하이라이트된다.
+export const evidenceSource = {
+  pages: [
+    "2026학년도 2학기 SW인재 장학금 신청 안내\n\n본교 재학생을 대상으로 2026학년도 SW인재 장학금 신청을 아래와 같이 안내합니다.\n\n장학금은 학업 성취도와 SW 역량을 고려하여 선발하며, 세부 사항은 다음 페이지를 참고하시기 바랍니다.",
+    "1. 신청 기간 및 방법\n신청 기간은 2026년 9월 15일(화)부터 9월 25일(금) 17:00까지이며, 기한 내 제출된 서류만 인정합니다.\n신청서, 성적증명서, 통장 사본을 구비하여 학생포털을 통해 제출하시기 바랍니다.\n\n2. 지원 대상\n신청 대상은 2026학년도 재학생이며 직전 학기 평균 평점 3.5 이상인 자에 한합니다.\n휴학생 및 졸업유예생은 신청할 수 없습니다.",
+    "3. 선발 및 발표\n선발 결과는 2026년 10월 2일(금) 학생포털 공지사항을 통해 발표합니다.\n\n4. 문의\n장학팀 031-8005-2345",
+  ],
+  fields: [
+    { id: "m1", key: "application_start", label: "신청 시작", value: "2026년 9월 15일", confidence: 98, status: "verified", page: 2, quote: "신청 기간은 2026년 9월 15일(화)부터 9월 25일(금) 17:00까지이며, 기한 내 제출된 서류만 인정합니다." },
+    { id: "m2", key: "deadline", label: "신청 마감", value: "2026년 9월 25일 17:00", confidence: 98, status: "verified", page: 2, quote: "신청 기간은 2026년 9월 15일(화)부터 9월 25일(금) 17:00까지이며, 기한 내 제출된 서류만 인정합니다." },
+    { id: "m3", key: "required_document", label: "제출 서류", value: "신청서, 성적증명서, 통장 사본", confidence: 94, status: "verified", page: 2, quote: "신청서, 성적증명서, 통장 사본을 구비하여 학생포털을 통해 제출하시기 바랍니다." },
+    { id: "m4", key: "applicant_criteria", label: "신청 대상", value: "2026학년도 재학생 / 평점 3.5 이상", confidence: 91, status: "verified", page: 2, quote: "신청 대상은 2026학년도 재학생이며 직전 학기 평균 평점 3.5 이상인 자에 한합니다." },
+    { id: "m5", key: "submission_method", label: "제출 방법", value: "학생포털 업로드", confidence: 72, status: "needs_review", page: 2, quote: "신청서, 성적증명서, 통장 사본을 구비하여 학생포털을 통해 제출하시기 바랍니다." },
+    { id: "m6", key: "announcement_date", label: "결과 발표", value: "2026년 10월 2일", confidence: 95, status: "verified", page: 3, quote: "선발 결과는 2026년 10월 2일(금) 학생포털 공지사항을 통해 발표합니다." },
+  ],
+};
+
 export const actionPlan = {
   id: "doc-1",
   title: "SW인재 장학금 신청",
