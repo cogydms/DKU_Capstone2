@@ -1,21 +1,33 @@
 // src/screens/ManagementScreen.js
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useLayoutEffect, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Alert, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Card from "../components/Card";
 import ProgressBar from "../components/ProgressBar";
-import { colors, spacing, type } from "../theme/theme";
-
+import { colors, spacing, type, radius } from "../theme/theme";
 import { listTodos, updateTodo, deleteTodo } from "../services/api";
 
-export default function ManagementScreen({ route }) {
+export default function ManagementScreen({ navigation, route }) {
   const documentId = route?.params?.documentId;
   const [todoList, setTodoList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
+  const goHome = useCallback(() => {
+    navigation.reset({ index: 0, routes: [{ name: "Home" }] });
+  }, [navigation]);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable onPress={goHome} accessibilityRole="button" accessibilityLabel="홈으로" hitSlop={8} style={{ paddingHorizontal: 4 }}>
+          <Ionicons name="home-outline" size={22} color={colors.ink} />
+        </Pressable>
+      ),
+    });
+  }, [navigation, goHome]);
 
   useFocusEffect(useCallback(() => {
     let active = true;
@@ -75,7 +87,7 @@ export default function ManagementScreen({ route }) {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={type.h1}>등록 후 관리</Text>
         <Text style={styles.subtitle}>마감일까지 진행 상황을 지켜볼게요</Text>
@@ -127,6 +139,11 @@ export default function ManagementScreen({ route }) {
             ))
           )}
         </Card>
+
+        <Pressable style={({ pressed }) => [styles.homeButton, pressed && styles.pressed]} onPress={goHome} accessibilityRole="button">
+          <Ionicons name="home" size={18} color="#fff" />
+          <Text style={styles.homeButtonText}>홈으로</Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -157,4 +174,15 @@ const styles = StyleSheet.create({
   },
   doneText: { color: colors.muted, textDecorationLine: "line-through" },
   emptyText: { ...type.body, color: colors.muted, textAlign: "center", paddingVertical: spacing.lg },
+  homeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 15,
+    borderRadius: radius.md,
+    backgroundColor: colors.stamp,
+  },
+  homeButtonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  pressed: { opacity: 0.8, transform: [{ scale: 0.98 }] },
 });
