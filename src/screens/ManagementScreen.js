@@ -1,99 +1,64 @@
 // src/screens/ManagementScreen.js
-import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Alert } from "react-native";
+import React, { useCallback, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Alert, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Card from "../components/Card";
 import ProgressBar from "../components/ProgressBar";
 import { colors, spacing, type } from "../theme/theme";
 
-// 🔥 Firebase 모듈: deleteDoc 추가
-import { db } from "../services/firebase";
-import { collection, getDocs, query, orderBy, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { listTodos, updateTodo, deleteTodo } from "../services/api";
 
-export default function ManagementScreen() {
+export default function ManagementScreen({ route }) {
+  const documentId = route?.params?.documentId;
   const [todoList, setTodoList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [busyId, setBusyId] = useState(null);
 
-  // 1. [조회: Read] Firestore의 todos 컬렉션 가져오기
-  const fetchTodos = async () => {
-    try {
-      setLoading(true);
-      const q = query(collection(db, "todos"), orderBy("order", "asc"));
-      const querySnapshot = await getDocs(q);
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    setLoading(true);
+    setError("");
+    listTodos(documentId).then((items) => { if (active) setTodoList(items); })
+      .catch((e) => { if (active) setError(e.message); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [documentId]));
 
-      const items = [];
-      querySnapshot.forEach((document) => {
-        items.push({
-          id: document.id,
-          ...document.data(),
-        });
-      });
-
-      setTodoList(items);
-    } catch (error) {
-      console.error("Firestore 조회 실패:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchTodos();
-  }, []);
-
-  // 2. [수정: Update] 체크박스 누를 때 DB is_completed 반영
   const handleToggle = async (todoId, currentStatus) => {
+    if (busyId) return;
+    setBusyId(todoId);
     const nextStatus = !currentStatus;
-
-    setTodoList((prev) =>
-      prev.map((item) => (item.id === todoId ? { ...item, is_completed: nextStatus } : item))
-    );
-
-    try {
-      const todoDocRef = doc(db, "todos", todoId);
-      await updateDoc(todoDocRef, {
-        is_completed: nextStatus,
-        updated_at: new Date(),
-      });
-      console.log(`DB 저장 성공! [ID: ${todoId}] -> is_completed: ${nextStatus}`);
-    } catch (error) {
-      console.error("DB 업데이트 실패:", error);
-      setTodoList((prev) =>
-        prev.map((item) => (item.id === todoId ? { ...item, is_completed: currentStatus } : item))
-      );
-      Alert.alert("오류", "상태 변경 저장에 실패했습니다.");
-    }
+    setTodoList((prev) => prev.map((item) => item.id === todoId ? { ...item, is_completed: nextStatus } : item));
+    try { await updateTodo(todoId, nextStatus); }
+    catch (e) {
+      setTodoList((prev) => prev.map((item) => item.id === todoId ? { ...item, is_completed: currentStatus } : item));
+      setError(e.message);
+    } finally { setBusyId(null); }
   };
 
-  // 3. [삭제: Delete] ⭐ 쓰레기통 터치 시 확인 팝업 후 Firestore DB에서 영구 삭제
-  const handleDelete = (todoId, todoTitle) => {
-    Alert.alert(
-      "할 일 삭제",
-      `'${todoTitle}' 항목을 삭제하시겠습니까?`,
-      [
-        { text: "취소", style: "cancel" },
-        {
-          text: "삭제",
-          style: "destructive",
-          onPress: async () => {
-            // UI에서 즉시 제거
-            setTodoList((prev) => prev.filter((item) => item.id !== todoId));
+  const removeTodo = async (todoId) => {
+    if (busyId) return;
+    setBusyId(todoId);
+    setError("");
+    try {
+      await deleteTodo(todoId);
+      setTodoList((prev) => prev.filter((item) => item.id !== todoId));
+    } catch (e) { setError(e.message); }
+    finally { setBusyId(null); }
+  };
 
-            // Firestore DB에서 실제 문서 삭제
-            try {
-              const todoDocRef = doc(db, "todos", todoId);
-              await deleteDoc(todoDocRef);
-              console.log(`DB 삭제 성공! [문서 ID: ${todoId}]`);
-            } catch (error) {
-              console.error("DB 삭제 실패:", error);
-              Alert.alert("오류", "DB에서 삭제하지 못했습니다. 다시 시도해 주세요.");
-              fetchTodos(); // 실패 시 DB 목록 다시 불러오기
-            }
-          },
-        },
-      ]
-    );
+  const handleDelete = (todoId, todoTitle) => {
+    if (Platform.OS === "web") {
+      if (window.confirm(`'${todoTitle}' 항목을 삭제하시겠습니까?`)) removeTodo(todoId);
+      return;
+    }
+    Alert.alert("할 일 삭제", `'${todoTitle}' 항목을 삭제하시겠습니까?`, [
+      { text: "취소", style: "cancel" },
+      { text: "삭제", style: "destructive", onPress: () => removeTodo(todoId) },
+    ]);
   };
 
   // 진행률 자동 계산
@@ -114,10 +79,11 @@ export default function ManagementScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={type.h1}>등록 후 관리</Text>
         <Text style={styles.subtitle}>마감일까지 진행 상황을 지켜볼게요</Text>
+        {!!error && <Text accessibilityRole="alert" style={[type.small, { color: colors.alert }]}>{error}</Text>}
 
         <Card style={styles.card}>
           <Text style={type.bodyStrong}>
-            {todoList[0]?.doc_title || "할 일 목록"}
+            {todoList[0]?.doc_title || route?.params?.documentTitle || "할 일 목록"}
           </Text>
 
           <View style={{ marginVertical: spacing.md }}>
@@ -135,7 +101,8 @@ export default function ManagementScreen() {
                 {/* 체크박스 & 텍스트 영역 */}
                 <Pressable
                   style={styles.todoContent}
-                  onPress={() => handleToggle(item.id, item.is_completed)}
+                  accessibilityRole="checkbox" accessibilityLabel={`${item.title} 완료`} aria-checked={!!item.is_completed}
+                  disabled={!!busyId} onPress={() => handleToggle(item.id, item.is_completed)}
                 >
                   <Ionicons
                     name={item.is_completed ? "checkbox" : "square-outline"}
@@ -150,6 +117,7 @@ export default function ManagementScreen() {
                 {/* 쓰레기통 삭제 버튼 */}
                 <Pressable
                   style={styles.deleteButton}
+                  accessibilityRole="button" accessibilityLabel={`${item.title} 삭제`} disabled={!!busyId}
                   onPress={() => handleDelete(item.id, item.title)}
                   hitSlop={8}
                 >
