@@ -1,15 +1,7 @@
+import { inputSurface } from "../theme/theme";
+import { Text, TextInput } from "./Typography";
 import React, { useState } from "react";
-import {
-  Modal,
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native";
+import { Modal, View, Pressable, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -331,7 +323,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line,
     borderRadius: radius.sm,
-    backgroundColor: colors.paper,
+    backgroundColor: inputSurface,
     padding: spacing.md,
   },
 

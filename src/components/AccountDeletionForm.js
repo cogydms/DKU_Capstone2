@@ -1,5 +1,6 @@
+import { Text } from "./Typography";
 import React, { useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { AuthError, AuthInput, AuthLink } from "./AuthFields";
 import PrimaryButton from "./PrimaryButton";
 import { useAuth } from "../contexts/AuthContext";

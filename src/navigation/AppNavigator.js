@@ -1,7 +1,9 @@
 import React, { useEffect } from "react";
+import { StyleSheet } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { NavigationContainer, createNavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { colors } from "../theme/theme";
+import { colors, gradients } from "../theme/theme";
 
 import MainTabs from "./MainTabs";
 import DocumentAddScreen from "../screens/DocumentAddScreen";
@@ -18,9 +20,10 @@ const navigationRef = createNavigationContainerRef();
 
 const screenOptions = {
   headerStyle: { backgroundColor: colors.paper },
+  headerBackground: () => <LinearGradient colors={gradients.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />,
   headerShadowVisible: false,
   headerTintColor: colors.ink,
-  headerTitleStyle: { fontWeight: "700" },
+  headerTitleStyle: { fontFamily: "Pretendard-Bold", fontWeight: "normal" },
   contentStyle: { backgroundColor: colors.paper },
 };
 

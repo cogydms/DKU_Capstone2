@@ -1,19 +1,12 @@
+import { pageContent } from "../theme/theme";
+import { Text } from "../components/Typography";
 // 담당자 3 (원문 근거 확인 / 검증 흐름) 소유
 // 근거 검증 에이전트 결과를 원문 페이지 위에 형광펜으로 표시하고, '확인 필요' 항목을 사용자가 승인하거나 삭제한다.
 // - 텍스트 레이어가 있는 PDF: 백엔드가 렌더링한 실제 페이지 이미지 + 근거 위치 박스
 // - 그 외(텍스트 입력, 이미지, 스캔 PDF, 원본 없음): 원문 텍스트를 종이 모양으로 그리고 근거 문장에 형광펜
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  Pressable,
-  ActivityIndicator,
-  Alert,
-  Platform,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View, ScrollView, StyleSheet, Pressable, ActivityIndicator, Alert, Platform } from "react-native";
+import ScreenSurface from "../components/ScreenSurface";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import PrimaryButton from "../components/PrimaryButton";
 import AuthenticatedPageImage from "../components/AuthenticatedPageImage";
@@ -24,8 +17,8 @@ import { backOrHome } from "../navigation/routes";
 
 // ─────────────────────────── 화면 상수 ───────────────────────────
 const UI = {
-  soft: "#F1F4F9", // 요약 카드 · 페이지 번호 · 안내 띠 배경
-  viewerBg: "#F3F5F8", // 페이지 뷰어 바탕
+  soft: "#D7E4F6", // 요약 카드 · 페이지 번호 · 안내 띠 배경
+  viewerBg: "#C8D9EF", // 페이지 뷰어 바탕
   hl: "rgba(255, 214, 10, 0.42)", // 선택한 항목 형광펜
   hlDim: "rgba(255, 226, 110, 0.22)", // '전체' 탭에서 나머지 항목
   arrow: "rgba(55, 60, 70, 0.55)",
@@ -354,7 +347,7 @@ export default function EvidenceCheckScreen({ navigation, route }) {
   const reviewCount = fields.filter((f) => NEEDS_ACTION(f.status)).length;
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+    <ScreenSurface style={styles.safe} edges={["top", "bottom"]}>
       {/* 헤더 */}
       <View style={styles.header}>
         <Pressable
@@ -602,16 +595,16 @@ export default function EvidenceCheckScreen({ navigation, route }) {
           onPress={() => navigation.navigate("ActionPlan", { documentId, view, analysis })}
         />
       </ScrollView>
-    </SafeAreaView>
+    </ScreenSurface>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.surface },
-  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: spacing.sm, height: 48 },
+  header: { width: "100%", maxWidth: 1120, alignSelf: "center", flexDirection: "row", alignItems: "center", paddingHorizontal: spacing.sm, height: 48 },
   headerSide: { width: 44, height: 40, justifyContent: "center", paddingLeft: 4 },
   headerTitle: { flex: 1, textAlign: "center", fontSize: 18, fontWeight: "700", color: colors.ink },
-  container: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+  container: { ...pageContent, paddingHorizontal: spacing.lg, paddingBottom: 112 },
 
   tabs: { gap: spacing.sm, paddingVertical: spacing.md },
   tab: {
@@ -659,7 +652,7 @@ const styles = StyleSheet.create({
   paper: {
     backgroundColor: "#fff",
     borderRadius: 2,
-    shadowColor: "#1F2E2B",
+    shadowColor: "#203D67",
     shadowOpacity: 0.1,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },

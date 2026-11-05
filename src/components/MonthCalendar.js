@@ -1,8 +1,10 @@
+import GlassTint from "./GlassTint";
+import { Text } from "./Typography";
 // 월 달력 (계획 수정 화면의 날짜 선택 달력과 같은 모양) + 날짜별 마감·할 일 점 표시
 import React from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, spacing, radius, type } from "../theme/theme";
+import { colors, spacing, radius, type, glass } from "../theme/theme";
 import { monthWeeks } from "../utils/calendarData";
 
 export const CALENDAR_ACCENT = colors.stamp;
@@ -16,6 +18,7 @@ export default function MonthCalendar({ month, onMonthChange, selected, onSelect
 
   return (
     <View style={styles.panel}>
+      <GlassTint radius={24} />
       <View style={styles.monthHeader}>
         <Pressable accessibilityRole="button" accessibilityLabel="이전 달" onPress={() => moveMonth(-1)} style={styles.monthButton}>
           <Ionicons name="chevron-back" size={20} color={CALENDAR_ACCENT} />
@@ -73,7 +76,7 @@ export default function MonthCalendar({ month, onMonthChange, selected, onSelect
 }
 
 const styles = StyleSheet.create({
-  panel: { borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, padding: spacing.sm, backgroundColor: colors.surface },
+  panel: { ...glass, borderRadius: radius.lg, padding: spacing.lg },
   monthHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.xs },
   monthButton: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   weekRow: { flexDirection: "row" },

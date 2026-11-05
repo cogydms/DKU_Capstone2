@@ -1,6 +1,7 @@
+import { Text } from "./Typography";
 // 문서가 하나도 없을 때 보여 주는 안내 + 문서 추가 버튼 (홈, 문서 목록 공통)
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import Card from "./Card";

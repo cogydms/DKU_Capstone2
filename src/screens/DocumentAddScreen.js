@@ -1,10 +1,11 @@
+import { glass } from "../theme/theme";
+import GlassTint from "../components/GlassTint";
+import { pageContent } from "../theme/theme";
+import { Text, TextInput } from "../components/Typography";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import {
-  View, Text, Pressable, StyleSheet, ActivityIndicator, TextInput, Alert, Platform,
-  KeyboardAvoidingView, ScrollView,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View, Pressable, StyleSheet, ActivityIndicator, Alert, Platform, KeyboardAvoidingView, ScrollView } from "react-native";
+import ScreenSurface from "../components/ScreenSurface";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
@@ -57,6 +58,7 @@ function MethodRow({ m, onPress }) {
       onPress={onPress}
       style={({ pressed }) => [styles.row, off && styles.rowSoon, pressed && styles.rowPressed]}
     >
+      {!off && <GlassTint radius={24} />}
       <View style={[styles.iconBox, { backgroundColor: off ? colors.line : m.bg }]}>
         <Ionicons name={m.icon} size={22} color={off ? colors.muted : m.color} />
       </View>
@@ -145,10 +147,10 @@ export default function DocumentAddScreen({ navigation }) {
 
   if (analyzing) {
     return (
-      <SafeAreaView style={[styles.safe, styles.center]}>
+      <ScreenSurface style={[styles.safe, styles.center]}>
         <ActivityIndicator size="large" color={colors.stamp} />
         <Text style={styles.analyzingText}>{stageList[stage]}</Text>
-      </SafeAreaView>
+      </ScreenSurface>
     );
   }
 
@@ -156,7 +158,7 @@ export default function DocumentAddScreen({ navigation }) {
     const len = text.trim().length;
     const ready = len >= 10;
     return (
-      <SafeAreaView style={styles.safe} edges={["top"]}>
+      <ScreenSurface style={styles.safe} edges={["top"]}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
             {/* 상단: 아이콘 + 제목 */}
@@ -172,6 +174,7 @@ export default function DocumentAddScreen({ navigation }) {
 
             {/* 입력 카드 */}
             <View style={[styles.inputCard, focused && styles.inputCardFocused]}>
+              <GlassTint radius={24} />
               <TextInput
                 style={styles.input}
                 multiline
@@ -221,12 +224,12 @@ export default function DocumentAddScreen({ navigation }) {
             </Pressable>
           </ScrollView>
         </KeyboardAvoidingView>
-      </SafeAreaView>
+      </ScreenSurface>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <ScreenSurface style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={type.h1}>문서 추가하기</Text>
         <Text style={styles.subtitle}>다양한 방법으로 문서를 공유할 수 있어요</Text>
@@ -248,29 +251,30 @@ export default function DocumentAddScreen({ navigation }) {
           ))}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenSurface>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
   center: { alignItems: "center", justifyContent: "center" },
-  container: { padding: spacing.lg },
+  container: { ...pageContent, padding: spacing.lg },
   subtitle: { ...type.body, color: colors.muted, marginTop: 4, marginBottom: spacing.xl },
   list: { gap: spacing.sm },
   row: {
+    ...glass,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
     padding: spacing.md,
-    backgroundColor: colors.surface,
+    backgroundColor: glass.backgroundColor,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.line,
-    shadowColor: "#1F2E2B",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
+    borderColor: glass.borderColor,
+    shadowColor: "#203D67",
+    shadowOpacity: glass.shadowOpacity,
+    shadowRadius: glass.shadowRadius,
+    shadowOffset: glass.shadowOffset,
     elevation: 1,
   },
   rowSoon: { backgroundColor: colors.paper, shadowOpacity: 0, elevation: 0 },
@@ -284,7 +288,7 @@ const styles = StyleSheet.create({
   },
   rowText: { flex: 1, gap: 2 },
   rowLabel: { fontSize: 16, fontWeight: "700", color: colors.ink },
-  rowDesc: { fontSize: 13, color: "#5B6475" },
+  rowDesc: { fontSize: 13, color: "#465E7C" },
   groupTitle: {
     fontSize: 13,
     fontWeight: "700",
@@ -296,16 +300,17 @@ const styles = StyleSheet.create({
   textHeader: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginBottom: spacing.lg },
   textTitle: { fontSize: 20, fontWeight: "800", color: colors.ink, letterSpacing: -0.3 },
   inputCard: {
-    backgroundColor: colors.surface,
+    ...glass,
+    backgroundColor: glass.backgroundColor,
     borderRadius: radius.lg,
     borderWidth: 1.5,
-    borderColor: colors.line,
+    borderColor: glass.borderColor,
     padding: spacing.md,
     marginBottom: spacing.md,
-    shadowColor: "#1F2E2B",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
+    shadowColor: "#203D67",
+    shadowOpacity: glass.shadowOpacity,
+    shadowRadius: glass.shadowRadius,
+    shadowOffset: glass.shadowOffset,
     elevation: 1,
   },
   inputCardFocused: { borderColor: colors.stamp },
