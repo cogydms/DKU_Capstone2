@@ -1,11 +1,13 @@
+import { dialogGlass } from "../theme/theme";
+import { Text } from "./Typography";
 import React, { useEffect, useState } from "react";
-import { Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Keyboard, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import PrimaryButton from "./PrimaryButton";
 import { colors, radius, spacing, type } from "../theme/theme";
 import { findAffiliation } from "../utils/authForm";
 
-const purple = "#5B50D6";
+const purple = "#2F5EDD";
 
 export default function AffiliationPicker({ visible, catalog, value, onConfirm, onClose }) {
   const [collegeId, setCollegeId] = useState("");
@@ -67,7 +69,7 @@ export default function AffiliationPicker({ visible, catalog, value, onConfirm, 
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: "rgba(24, 30, 50, 0.35)", justifyContent: "center", alignItems: "center", padding: spacing.lg },
-  modal: { width: "100%", maxWidth: 600, maxHeight: "90%", backgroundColor: colors.surface, borderRadius: 20, borderWidth: 1, borderColor: colors.line, padding: spacing.lg, gap: spacing.lg },
+  modal: { ...dialogGlass, width: "100%", maxWidth: 600, maxHeight: "90%", backgroundColor: dialogGlass.backgroundColor, borderRadius: 20, borderWidth: 1, borderColor: colors.line, padding: spacing.lg, gap: spacing.lg },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   columns: { flexDirection: "row", gap: spacing.md, flexShrink: 1, minHeight: 160 },
   column: { flex: 1, gap: spacing.sm },

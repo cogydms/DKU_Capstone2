@@ -1,8 +1,10 @@
+import { pageContent } from "../theme/theme";
+import { Text } from "../components/Typography";
 // 캘린더: 저장된 문서 마감일과 준비 계획 할 일을 달력에 표시하고, 날짜를 누르면 그날의 마감·할 일을 보여준다.
 import React, { useCallback, useMemo, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View, ScrollView, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import ScreenSurface from "../components/ScreenSurface";
 import { Ionicons } from "@expo/vector-icons";
 import Card from "../components/Card";
 import Badge from "../components/Badge";
@@ -77,8 +79,10 @@ export default function CalendarScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+    <ScreenSurface style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.container}>
+        <Text accessibilityRole="header" style={[type.display, { marginBottom: 8 }]}>캘린더</Text>
+        <Text style={[type.body, { color: colors.muted, marginBottom: 24 }]}>다가오는 일정, 차근차근 준비하세요.</Text>
         <View style={styles.topRow}>
           <Text style={styles.summary}>
             {loading ? "불러오는 중…" : `${month.getMonth() + 1}월 마감 ${monthCount}개`}
@@ -159,13 +163,13 @@ export default function CalendarScreen({ navigation }) {
           </>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </ScreenSurface>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
-  container: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  container: { ...pageContent, padding: spacing.lg, paddingBottom: 112 },
   topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.md },
   summary: { ...type.bodyStrong, color: colors.muted },
   todayButton: { borderWidth: 1, borderColor: colors.line, borderRadius: 999, paddingHorizontal: spacing.md, paddingVertical: 6, backgroundColor: colors.surface },

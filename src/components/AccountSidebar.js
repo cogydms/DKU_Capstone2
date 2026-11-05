@@ -1,5 +1,7 @@
+import { dialogGlass } from "../theme/theme";
+import { Text } from "./Typography";
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Animated, Modal, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import PrimaryButton from "./PrimaryButton";
@@ -125,7 +127,7 @@ export default function AccountSidebar({ visible, onClose, onNavigate }) {
 const styles = StyleSheet.create({
   overlay: { flex: 1, alignItems: "flex-end" },
   shade: { backgroundColor: "rgba(24, 30, 50, 0.35)" },
-  panel: { height: "100%", backgroundColor: colors.surface, borderLeftWidth: 1, borderLeftColor: colors.line },
+  panel: { ...dialogGlass, height: "100%", backgroundColor: dialogGlass.backgroundColor, borderLeftWidth: 1, borderLeftColor: colors.line },
   safe: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.line },
   close: { padding: spacing.xs },

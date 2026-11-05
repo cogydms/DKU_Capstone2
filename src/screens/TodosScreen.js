@@ -1,10 +1,12 @@
+import { pageContent } from "../theme/theme";
+import { Text } from "../components/Typography";
 // 할 일 탭: 위쪽에서 [할 일 | 문서]를 고른다.
 // - 할 일: 등록한 모든 문서의 준비 할 일을 날짜별로 모아 보고 바로 체크한다.
 // - 문서: 올린 문서 전체 목록 (검색·필터, DocumentListPanel)
 import React, { useCallback, useMemo, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View, ScrollView, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import ScreenSurface from "../components/ScreenSurface";
 import { Ionicons } from "@expo/vector-icons";
 import Card from "../components/Card";
 import DocumentListPanel from "../components/DocumentListPanel";
@@ -98,7 +100,7 @@ export default function TodosScreen({ navigation }) {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <ScreenSurface style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
         <Text style={type.display}>{view === "documents" ? "문서" : "할 일"}</Text>
         <View style={styles.segment} accessibilityRole="tablist">
@@ -154,19 +156,19 @@ export default function TodosScreen({ navigation }) {
         )}
         </>}
       </ScrollView>
-    </SafeAreaView>
+    </ScreenSurface>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md, gap: 2 },
+  header: { width: "100%", maxWidth: 1120, alignSelf: "center", paddingHorizontal: spacing.lg, paddingTop: 24, paddingBottom: 24, gap: 2 },
   segment: { flexDirection: "row", backgroundColor: colors.line, borderRadius: 999, padding: 3, marginTop: spacing.sm },
   segmentItem: { flex: 1, height: 34, borderRadius: 999, alignItems: "center", justifyContent: "center" },
   segmentOn: { backgroundColor: colors.surface },
   segmentText: { fontSize: 14, fontWeight: "600", color: colors.muted },
   segmentTextOn: { color: colors.ink },
-  container: { padding: spacing.lg, paddingTop: 0, paddingBottom: spacing.xxl },
+  container: { ...pageContent, padding: spacing.lg, paddingTop: 0, paddingBottom: 112 },
   errorBox: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm, marginBottom: spacing.md },
   errorText: { ...type.small, color: colors.alert, flex: 1 },
   empty: { alignItems: "center", gap: spacing.sm, paddingVertical: spacing.xl },

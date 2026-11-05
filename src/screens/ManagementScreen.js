@@ -1,8 +1,11 @@
+import { dialogGlass } from "../theme/theme";
+import { pageContent } from "../theme/theme";
+import { Text } from "../components/Typography";
 // src/screens/ManagementScreen.js
 import React, { useCallback, useLayoutEffect, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Alert, Platform, Linking, Modal } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View, ScrollView, Pressable, StyleSheet, ActivityIndicator, Alert, Platform, Linking, Modal } from "react-native";
+import ScreenSurface from "../components/ScreenSurface";
 import { Ionicons } from "@expo/vector-icons";
 import Card from "../components/Card";
 import ProgressBar from "../components/ProgressBar";
@@ -232,15 +235,15 @@ export default function ManagementScreen({ navigation, route }) {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.safe, styles.center]}>
+      <ScreenSurface style={[styles.safe, styles.center]}>
         <ActivityIndicator size="large" color={colors.stamp} />
         <Text style={{ marginTop: spacing.md, color: colors.muted }}>할 일 목록을 불러오는 중...</Text>
-      </SafeAreaView>
+      </ScreenSurface>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+    <ScreenSurface style={styles.safe} edges={["bottom"]}>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={type.h1}>등록 후 관리</Text>
         <Text style={styles.subtitle}>마감일까지 진행 상황을 지켜볼게요</Text>
@@ -305,7 +308,7 @@ export default function ManagementScreen({ navigation, route }) {
 
           {/* 다음 할 일 또는 모두 완료 */}
           {allDone ? (
-            <View style={[styles.banner, { backgroundColor: "#E3F4FC" }]}>
+            <View style={[styles.banner, { backgroundColor: "#C9DAF3" }]}>
               <Text style={styles.bannerEmoji}>🎉</Text>
               <Text style={[styles.bannerText, { color: "#0B6E99" }]}>
                 준비를 모두 마쳤어요! 마감 전에 제출만 확인하세요.
@@ -511,14 +514,14 @@ export default function ManagementScreen({ navigation, route }) {
           onClose={() => setEditingTodo(null)}
         />
       )}      
-    </SafeAreaView>
+    </ScreenSurface>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
   center: { alignItems: "center", justifyContent: "center" },
-  container: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  container: { ...pageContent, padding: spacing.lg, paddingBottom: 112 },
   subtitle: { ...type.body, color: colors.muted, marginTop: 4, marginBottom: spacing.lg },
   card: { marginBottom: spacing.lg },
   progressLabel: { ...type.small, marginTop: spacing.xs },
@@ -557,7 +560,7 @@ const styles = StyleSheet.create({
   projectMenuButton: { width: 28, height: 28, alignItems: "center", justifyContent: "center" },
   ddayBadge: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md },
   ddayText: { fontSize: 18, fontWeight: "700", includeFontPadding: false },
-  deadlineText: { fontSize: 13, color: "#4B5565", marginTop: 4 },
+  deadlineText: { fontSize: 13, color: "#465E7C", marginTop: 4 },
   todoTitle: { fontSize: 15, lineHeight: 21, color: colors.ink },
   todoDate: { fontSize: 12, color: colors.muted, marginTop: 2 },
   overdueText: { color: colors.alert, fontWeight: "700" },
@@ -591,7 +594,7 @@ const styles = StyleSheet.create({
   tipText: { flex: 1, fontSize: 12, lineHeight: 17, color: colors.muted },
   menuBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0, 0, 0, 0.25)", padding: spacing.lg },
 
-documentMenu: { backgroundColor: "#FFFFFF", borderRadius: radius.lg, padding: spacing.md },
+documentMenu: { ...dialogGlass, backgroundColor: dialogGlass.backgroundColor, borderRadius: radius.lg, padding: spacing.md },
 
 menuTitle: {
   ...type.bodyStrong, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.line },

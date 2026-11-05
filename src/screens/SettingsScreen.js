@@ -1,3 +1,5 @@
+import { pageContent } from "../theme/theme";
+import { Text } from "../components/Typography";
 // 설정 탭: 계정 / 알림 / 앱 정보
 // - 계정: components/settings/AccountSection.js (팀원 B가 채울 칸)
 // - 알림: 마감 알림 켜기·끄기, 알림 시각 고르기
@@ -5,8 +7,8 @@
 // - 맨 아래: 로그아웃, 회원 탈퇴
 import React, { useCallback, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import { View, Text, ScrollView, Pressable, StyleSheet, Switch } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View, ScrollView, Pressable, StyleSheet, Switch } from "react-native";
+import ScreenSurface from "../components/ScreenSurface";
 import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import Card from "../components/Card";
@@ -82,7 +84,7 @@ export default function SettingsScreen() {
   const hourDisabled = notificationsSupported && !notice.enabled;
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <ScreenSurface style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
         {deleting ? (
           <Pressable accessibilityRole="button" accessibilityLabel="설정으로 돌아가기" disabled={busy}
@@ -187,15 +189,15 @@ export default function SettingsScreen() {
           </>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </ScreenSurface>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md },
+  header: { width: "100%", maxWidth: 1120, alignSelf: "center", paddingHorizontal: spacing.lg, paddingTop: 24, paddingBottom: 24 },
   back: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
-  container: { padding: spacing.lg, paddingTop: 0, paddingBottom: spacing.xxl },
+  container: { ...pageContent, padding: spacing.lg, paddingTop: 0, paddingBottom: 112 },
   sectionTitle: { ...type.label, fontSize: 12, marginBottom: spacing.xs, marginTop: spacing.sm },
   card: { marginBottom: spacing.lg },
   listCard: { paddingVertical: spacing.xs },

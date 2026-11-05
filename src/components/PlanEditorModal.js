@@ -1,5 +1,7 @@
+import { inputSurface } from "../theme/theme";
+import { Text, TextInput } from "./Typography";
 import React, { useState } from "react";
-import { Modal, View, Text, TextInput, Pressable, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
+import { Modal, View, Pressable, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Card from "./Card";
@@ -136,7 +138,7 @@ const styles = StyleSheet.create({
   listRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.lg, borderTopWidth: 1, borderTopColor: colors.line },
   listText: { flex: 1, gap: spacing.xs }, listDate: { ...type.small }, pressed: { opacity: 0.65 },
   field: { marginBottom: spacing.lg }, fieldLabel: { ...type.bodyStrong, marginBottom: spacing.sm },
-  input: { ...type.body, borderWidth: 1, borderColor: colors.line, borderRadius: radius.sm, backgroundColor: colors.paper, padding: spacing.md, minHeight: 46 },
+  input: { ...type.body, borderWidth: 1, borderColor: colors.line, borderRadius: radius.sm, backgroundColor: inputSurface, padding: spacing.md, minHeight: 46 },
   multiline: { minHeight: 88, textAlignVertical: "top" },
   durationRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   durationInput: { flex: 1, minWidth: 0, textAlign: "center" },

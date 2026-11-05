@@ -1,14 +1,19 @@
+import { dialogGlass } from "../theme/theme";
+import { pageContent } from "../theme/theme";
+import { Text, TextInput } from "../components/Typography";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useFocusEffect, useScrollToTop } from "@react-navigation/native";
-import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, Modal, Alert, Platform } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View, ScrollView, Pressable, StyleSheet, Modal, Alert, Platform, useWindowDimensions } from "react-native";
+import ScreenSurface from "../components/ScreenSurface";
 import { Ionicons } from "@expo/vector-icons";
+import DocumentHero from "../components/DocumentHero";
+import GlassTint from "../components/GlassTint";
 import Card from "../components/Card";
 import Badge from "../components/Badge";
 import ProgressBar from "../components/ProgressBar";
 import DocumentEditModal from "../components/DocumentEditModal";
 import EmptyStart from "../components/EmptyStart";
-import { colors, spacing, type, radius } from "../theme/theme";
+import { colors, spacing, type, radius, glass } from "../theme/theme";
 import { listDocuments, getDocument, listTodos, updateTodo, updateDocument, deleteDocument, } from "../services/api";
 import { localPlanDate } from "../utils/preparationPlan";
 import { upcomingDocuments, ddayLabel, planProgress } from "../utils/homeData";
@@ -22,6 +27,7 @@ const todayLabel = () => {
 };
 
 export default function HomeScreen({ navigation, route }) {
+  const wide = useWindowDimensions().width >= 900;
   // 두 화면의 카드·문서 열기·수정·삭제 동작을 함께 유지한다.
   const isDocumentsScreen = route?.name === "Documents";
   const scroll = useRef(null);
@@ -268,9 +274,10 @@ export default function HomeScreen({ navigation, route }) {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <ScreenSurface style={styles.safe} edges={["top"]}>
       {/* 헤더 */}
       <View style={styles.header}>
+        <GlassTint radius={16} />
         <View style={styles.brandRow}>
           <View style={styles.logoDot}>
             <Ionicons name="document-text" size={18} color="#FFFFFF" />
@@ -282,7 +289,7 @@ export default function HomeScreen({ navigation, route }) {
         </View>
         <View style={styles.headerIcons}>
           <Pressable hitSlop={8} accessibilityRole="button" accessibilityLabel="알림함"
-            onPress={() => navigation.navigate("Notifications")}>
+            onPress={() => navigation.navigate("Notifications")} style={styles.notificationButton}>
             <Ionicons name="notifications-outline" size={22} color={colors.ink} />
           </Pressable>
         </View>
@@ -293,7 +300,7 @@ export default function HomeScreen({ navigation, route }) {
         {!!error && <Pressable accessibilityRole="button" disabled={loading} onPress={() => setReload((prev) => prev + 1)}
           style={{ marginBottom: spacing.md }}><Text style={[type.bodyStrong, { color: colors.stamp }]}>다시 불러오기</Text></Pressable>}
         {/* 문서가 하나도 없으면 첫 공지 안내 */}
-        {noDocuments ? <EmptyStart /> : isDocumentsScreen ? <>
+        {noDocuments && isDocumentsScreen ? <EmptyStart /> : isDocumentsScreen ? <>
           <View style={styles.sectionHeaderRow}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>내 문서</Text>
             <Text style={type.small}>{loading ? "불러오는 중…" : `${documents.length}개`}</Text>
@@ -322,83 +329,61 @@ export default function HomeScreen({ navigation, route }) {
           </ScrollView>
           {renderDocumentCard(visibleDocuments)}
         </> : <>
-        {/* 탭 버튼 */}
-        <View style={styles.tabRow}>
-          <Pressable
-            style={[styles.tab, tab === "today" && styles.tabActive]}
-            onPress={() => setTab("today")}
-          >
-            <Text style={[styles.tabText, tab === "today" && styles.tabTextActive]}>오늘 할일</Text>
-            <View style={[styles.countPill, tab === "today" && styles.countPillActive]}>
-              <Text style={[styles.countText, tab === "today" && styles.countTextActive]}>
-                {tasks.length}
-              </Text>
-            </View>
-          </Pressable>
-          <Pressable
-            style={[styles.tab, tab === "upcoming" && styles.tabActive]}
-            onPress={() => setTab("upcoming")}
-          >
-            <Text style={[styles.tabText, tab === "upcoming" && styles.tabTextActive]}>다가오는 마감</Text>
-            <View style={[styles.countPill, tab === "upcoming" && styles.countPillActive]}>
-              <Text style={[styles.countText, tab === "upcoming" && styles.countTextActive]}>
-                {sortedUpcoming.length}
-              </Text>
-            </View>
-          </Pressable>
+        <View style={styles.intro}>
+          <Text accessibilityRole="header" style={[styles.greeting, !wide && { fontSize: 28 }]}>오늘의 준비를 한눈에</Text>
+          <Text style={styles.date}>{todayLabel()}</Text>
         </View>
-
-        {tab === "today" ? (
-          <>
-            <Text style={styles.sectionTitle}>{todayLabel()}</Text>
-            <Card style={{ marginBottom: spacing.xl }}>
-              {tasks.length === 0 && <Text style={type.small}>{loading ? "불러오는 중…" : "오늘 등록된 할 일이 없습니다."}</Text>}
-              {tasks.map((item, idx) => (
-                <Pressable
-                  key={item.id}
-                  accessibilityRole="checkbox" accessibilityLabel={`${item.title} 완료`} aria-checked={!!item.is_completed}
-                  disabled={!!busyTaskId} onPress={() => toggleTask(item)}
-                  style={[styles.taskRow, idx > 0 && styles.rowDivider]}
-                >
-                  <Ionicons
-                    name={item.is_completed ? "checkbox" : "square-outline"}
-                    size={22}
-                    color={item.is_completed ? colors.stamp : colors.muted}
-                  />
-                  <View style={{ flex: 1, marginLeft: spacing.sm }}>
-                    <Text style={[type.bodyStrong, item.is_completed && styles.doneText]}>{item.title}</Text>
-                    <Text style={styles.taskSubtitle}>{item.doc_title}</Text>
-                  </View>
-                  <Text style={styles.taskDday}>{ddayLabel(documents.find((document) => document.id === item.document_id)?.dday)}</Text>
-                </Pressable>
-              ))}
-            </Card>
-
+        <View style={styles.stats}>
+          {[{ key: "today", label: "오늘 할 일", value: tasks.length, icon: "checkbox-outline" },
+            { key: "upcoming", label: "다가오는 마감", value: sortedUpcoming.length, icon: "calendar-outline" }].map((item) => (
+            <Pressable key={item.key} accessibilityRole="button" accessibilityState={{ selected: tab === item.key }}
+              accessibilityLabel={`${item.label} ${item.value}개`} onPress={() => setTab(item.key)}
+              style={({ pressed }) => [styles.stat, !wide && { padding: 12, gap: 8 }, pressed && { opacity: 0.75 }]}>
+              <GlassTint radius={22} />
+              <View style={[styles.statIcon, !wide && { width: 36, height: 40 }]}><Ionicons name={item.icon} color={colors.stamp} size={26} /></View>
+              <View style={{ flex: 1 }}><Text numberOfLines={1} style={styles.statLabel}>{item.label}</Text>
+                <Text style={styles.statValue}>{loading ? "—" : item.value}</Text></View>
+              {wide && <Ionicons name="chevron-forward" color={colors.muted} size={16} />}
+            </Pressable>
+          ))}
+        </View>
+        <DocumentHero onPress={() => navigation.navigate("DocumentAdd")} />
+        <View style={[styles.dashboard, wide && { flexDirection: "row" }]}>
+          <View style={{ flex: wide ? 1.25 : undefined, minWidth: 0 }}>
             <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionTitle}>다가오는 마감</Text>
-              <Pressable onPress={() => setTab("upcoming")} hitSlop={8}>
-                <Text style={styles.seeAll}>전체보기 ›</Text>
+              <Pressable accessibilityRole="button" onPress={() => setTab(tab === "upcoming" ? "today" : "upcoming")} hitSlop={8}>
+                <Text style={styles.seeAll}>{tab === "upcoming" ? "간략히 보기" : "전체 보기"} ›</Text>
               </Pressable>
             </View>
-            {renderDocumentCard(previewUpcoming)}
-          </>
-        ) : (
-          <View style={{ marginBottom: spacing.xl }}>
-            <Text style={styles.sectionTitle}>다가오는 마감</Text>
-
-            <Pressable
-              style={styles.sortToggle}
-              onPress={() => setSortBy((prev) => (prev === "dday" ? "recent" : "dday"))}
-            >
+            {tab === "upcoming" && <Pressable accessibilityRole="button" style={styles.sortToggle}
+              onPress={() => setSortBy((prev) => prev === "dday" ? "recent" : "dday")}>
               <Ionicons name="swap-vertical" size={14} color={colors.muted} />
-              <Text style={styles.sortToggleText}>
-                {sortBy === "dday" ? "마감임박순" : "최신순"}
-              </Text>
-            </Pressable>
-
-            {renderDocumentCard(sortedUpcoming)}
+              <Text style={styles.sortToggleText}>{sortBy === "dday" ? "마감임박순" : "최신순"}</Text>
+            </Pressable>}
+            {noDocuments ? <EmptyStart /> : renderDocumentCard(tab === "upcoming" ? sortedUpcoming : previewUpcoming)}
           </View>
-        )}
+          <View style={{ flex: wide ? 1 : undefined, minWidth: 0 }}>
+            <Text style={styles.sectionTitle}>오늘 할 일</Text>
+            <Card style={{ minHeight: 202 }}>
+              {tasks.length === 0 && <View style={styles.emptyToday}>
+                <View style={styles.emptyIcon}><Ionicons name="checkmark" size={30} color={colors.stamp} /></View>
+                <Text style={[type.body, { textAlign: "center" }]}>{loading ? "불러오는 중…" : "오늘 등록된 할 일이 없어요"}</Text>
+                <Text style={[type.small, { textAlign: "center" }]}>다가오는 마감을 미리 확인해 보세요.</Text>
+              </View>}
+              {tasks.map((item, idx) => <Pressable key={item.id}
+                accessibilityRole="checkbox" accessibilityLabel={`${item.title} 완료`} aria-checked={!!item.is_completed}
+                disabled={!!busyTaskId} onPress={() => toggleTask(item)} style={[styles.taskRow, idx > 0 && styles.rowDivider]}>
+                <Ionicons name={item.is_completed ? "checkbox" : "square-outline"} size={22} color={item.is_completed ? colors.stamp : colors.muted} />
+                <View style={{ flex: 1, marginLeft: spacing.sm }}>
+                  <Text style={[type.bodyStrong, item.is_completed && styles.doneText]}>{item.title}</Text>
+                  <Text style={styles.taskSubtitle}>{item.doc_title}</Text>
+                </View>
+                <Text style={styles.taskDday}>{ddayLabel(documents.find(d => d.id === item.document_id)?.dday)}</Text>
+              </Pressable>)}
+            </Card>
+          </View>
+        </View>
         </>}
 
       </ScrollView>
@@ -479,25 +464,38 @@ export default function HomeScreen({ navigation, route }) {
         />
       )}
 
-    </SafeAreaView>
+    </ScreenSurface>
   );
 }
 
 const styles = StyleSheet.create({
+  intro: { marginTop: 12, marginBottom: 24 },
+  greeting: { ...type.display, fontSize: 36, letterSpacing: -1.2 },
+  date: { ...type.bodyStrong, color: colors.muted, marginTop: 10 },
+  stats: { flexDirection: "row", gap: 14, marginBottom: 24 },
+  stat: { ...glass, flex: 1, borderRadius: 22, padding: 18, flexDirection: "row", alignItems: "center", gap: 12 },
+  statIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: colors.stampSoft, alignItems: "center", justifyContent: "center" },
+  statLabel: { ...type.small, color: colors.ink },
+  statValue: { ...type.display, marginTop: 4 },
+  dashboard: { gap: 24 },
+  emptyToday: { alignItems: "center", justifyContent: "center", flex: 1, paddingVertical: 12, gap: 12 },
+  emptyIcon: { width: 56, height: 56, backgroundColor: colors.stampSoft, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   safe: { flex: 1, backgroundColor: colors.paper },
-  header: {
+  notificationButton: { backgroundColor: "rgba(233,243,255,0.48)", borderWidth: 1, borderColor: "rgba(246,251,255,0.7)", padding: 8, borderRadius: 14 },
+  header: { ...glass, borderRadius: 16, width: "100%", maxWidth: 1120, alignSelf: "center",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
+    paddingTop: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,.7)",
   },
   brandRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   headerIcons: { flexDirection: "row", alignItems: "center", gap: spacing.lg },
   logoDot: {
-    width: 28,
-    height: 28,
+    width: 34,
+    height: 36,
     borderRadius: radius.sm,
     backgroundColor: colors.stamp,
     alignItems: "center",
@@ -532,7 +530,7 @@ const styles = StyleSheet.create({
   filterChipOn: { backgroundColor: colors.stamp, borderColor: colors.stamp },
   filterChipText: { fontSize: 13, fontWeight: "600", color: colors.ink },
   filterChipTextOn: { color: "#FFFFFF" },
-  container: { padding: spacing.lg, paddingBottom: spacing.xl },
+  container: { ...pageContent, padding: spacing.lg, paddingBottom: 112 },
 
   tabRow: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.lg },
   tab: {
@@ -625,8 +623,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.25)",
     padding: spacing.lg,
   },
-  documentMenu: {
-    backgroundColor: "#FFFFFF",
+  documentMenu: { ...dialogGlass,
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: spacing.md,
   },

@@ -1,7 +1,10 @@
+import { pageContent } from "../theme/theme";
+import { Text } from "../components/Typography";
 import React, { useCallback, useRef, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import { View, Text, ScrollView, Pressable, StyleSheet, Modal } from "react-native";
+import { View, ScrollView, Pressable, StyleSheet, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import ScreenSurface from "../components/ScreenSurface";
 import { Ionicons } from "@expo/vector-icons";
 import Card from "../components/Card";
 import PrimaryButton from "../components/PrimaryButton";
@@ -16,8 +19,8 @@ import { backOrHome } from "../navigation/routes";
 
 // 첨부 화면의 색상은 이 화면에만 적용하고 앱 공통 디자인 토큰은 유지한다.
 const planColors = {
-    ink: "#181C43", accent: colors.stamp, soft: colors.stampSoft, border: "#C9D7FB",
-  green: "#50AE83", alert: "#E34B60", alertSoft: "#FCECF0",
+    ink: "#101D32", accent: colors.stamp, soft: colors.stampSoft, border: "#B3C8E4",
+  green: "#28766B", alert: "#A34249", alertSoft: "#F4E4E5",
 };
 
 export default function ActionPlanScreen({ navigation, route }) {
@@ -56,7 +59,7 @@ export default function ActionPlanScreen({ navigation, route }) {
   }, [id, preview, reload]));
 
   if (loading || error || !resource) return (
-    <SafeAreaView style={styles.safe}>
+    <ScreenSurface style={styles.safe}>
       <View style={styles.container}>
         <Text style={[type.body, { marginVertical: spacing.lg }]}>{error || "저장된 준비 계획을 불러오는 중…"}</Text>
         {!!error && <PrimaryButton label="다시 불러오기" onPress={() => setReload((prev) => prev + 1)} />}
@@ -65,7 +68,7 @@ export default function ActionPlanScreen({ navigation, route }) {
           <Ionicons name="chevron-back" size={24} color={planColors.ink} />
         </Pressable>
       </View>
-    </SafeAreaView>
+    </ScreenSurface>
   );
   return <ActionPlanContent key={`${resource.id}:${resource.revision || 0}`} navigation={navigation}
     plan={resource} onReload={() => setReload((prev) => prev + 1)} />;
@@ -126,7 +129,7 @@ function ActionPlanContent({ navigation, plan, onReload }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+    <ScreenSurface style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.backRow}>
         <Pressable accessibilityRole="button" accessibilityLabel="뒤로가기" disabled={saving} hitSlop={8} onPress={() => backOrHome(navigation)} style={styles.backButton}>
           <Ionicons name="chevron-back" size={24} color={planColors.ink} />
@@ -232,7 +235,7 @@ function ActionPlanContent({ navigation, plan, onReload }) {
           </Card>
         </SafeAreaView>
       </Modal>
-    </SafeAreaView>
+    </ScreenSurface>
   );
 }
 
@@ -240,14 +243,14 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
   backRow: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs },
   backButton: { width: 44, height: 36, justifyContent: "center" },
-  heading: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.xl, paddingTop: spacing.sm, paddingBottom: spacing.lg },
+  heading: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.xl, paddingTop: spacing.sm, paddingBottom: 112 },
   title: { ...type.h1, color: planColors.ink, flex: 1, fontSize: 19 },
   editButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs, borderWidth: 1, borderColor: planColors.border, borderRadius: radius.sm, paddingHorizontal: spacing.sm, minHeight: 34 },
   editText: { fontSize: 12, fontWeight: "700", color: planColors.accent },
   pressed: { opacity: 0.65 },
-  container: { paddingHorizontal: spacing.xl, paddingBottom: spacing.lg },
-  planCard: { padding: 0, borderColor: "#EFF0F6", overflow: "hidden" },
-  summary: { padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: "#EFF0F6" },
+  container: { ...pageContent, paddingHorizontal: spacing.xl, paddingBottom: 112 },
+  planCard: { padding: 0, borderColor: "#BACCE2", overflow: "hidden" },
+  summary: { padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: "#BACCE2" },
   documentTitle: { ...type.h2, color: planColors.ink, marginBottom: spacing.md },
   deadlineRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   deadlineInfo: { flex: 1, gap: spacing.xs },
@@ -260,19 +263,19 @@ const styles = StyleSheet.create({
   timeline: { paddingHorizontal: spacing.lg },
   stepRow: { flexDirection: "row", minHeight: 100 },
   markerColumn: { width: 26, alignItems: "center" },
-  connector: { position: "absolute", top: 0, bottom: 0, width: 2, backgroundColor: "#E9EBF4" },
+  connector: { position: "absolute", top: 0, bottom: 0, width: 2, backgroundColor: "#B2C7DF" },
   lastConnector: { height: 45, bottom: undefined },
   marker: { marginTop: 29, width: 24, height: 24, alignItems: "center", justifyContent: "center", borderRadius: radius.pill },
   completedMarker: { backgroundColor: planColors.green },
   deadlineMarker: { backgroundColor: planColors.alert },
-  pendingMarker: { backgroundColor: colors.surface, borderWidth: 2, borderColor: "#8C94B4", borderRadius: radius.sm },
-  connectorDot: { position: "absolute", bottom: 0, width: 3, height: 4, borderRadius: radius.pill, backgroundColor: "#929CC4" },
+  pendingMarker: { backgroundColor: colors.surface, borderWidth: 2, borderColor: "#6A86AC", borderRadius: radius.sm },
+  connectorDot: { position: "absolute", bottom: 0, width: 3, height: 4, borderRadius: radius.pill, backgroundColor: "#7B96BC" },
   stepBody: { flex: 1, paddingLeft: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.md, gap: spacing.xs },
   stepDate: { ...type.bodyStrong, color: planColors.ink, lineHeight: 21 },
   stepTitle: { ...type.bodyStrong, color: planColors.ink, lineHeight: 21, fontWeight: "700" },
   stepDetail: { ...type.small, lineHeight: 19, fontWeight: "500" },
-  deadlineDate: { color: "#B33981" },
-  deadlineTime: { color: "#E46241", fontWeight: "700", fontSize: 13 },
+  deadlineDate: { color: "#A34249" },
+  deadlineTime: { color: "#A34249", fontWeight: "700", fontSize: 13 },
   addButton: { margin: spacing.lg, marginTop: spacing.sm, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: spacing.xs, minHeight: 50, backgroundColor: planColors.soft, borderWidth: 1, borderColor: planColors.border, borderRadius: radius.md },
   addText: { ...type.bodyStrong, color: planColors.accent },
   registerButton: { backgroundColor: planColors.accent, minHeight: 52, justifyContent: "center", marginTop: spacing.lg },
