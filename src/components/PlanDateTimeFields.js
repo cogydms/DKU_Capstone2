@@ -1,10 +1,12 @@
+import { inputSurface } from "../theme/theme";
+import { Text } from "./Typography";
 import React, { useState } from "react";
-import { View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
+import { View, Pressable, ScrollView, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, radius, type } from "../theme/theme";
 import { parsePlanDate } from "../utils/preparationPlan";
 
-const accent = "#5B50D6";
+const accent = "#2F5EDD";
 const pad = (value) => String(value).padStart(2, "0");
 
 export function CalendarDateField({ value, onChange, minDate, maxDate, allowClear = false }) {
@@ -140,7 +142,7 @@ export function TimeSelectionField({ label, value, onChange }) {
 
 const styles = StyleSheet.create({
   field: { marginBottom: spacing.lg }, label: { ...type.bodyStrong, marginBottom: spacing.sm },
-  selector: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm, borderWidth: 1, borderColor: colors.line, borderRadius: radius.sm, backgroundColor: colors.paper, padding: spacing.md, minHeight: 46 },
+  selector: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm, borderWidth: 1, borderColor: colors.line, borderRadius: radius.sm, backgroundColor: inputSurface, padding: spacing.md, minHeight: 46 },
   panel: { marginTop: spacing.sm, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, padding: spacing.sm, backgroundColor: colors.surface },
   monthHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.xs },
   monthButton: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
@@ -151,7 +153,7 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.25 }, pressed: { opacity: 0.65 }, hint: { ...type.small, lineHeight: 18, padding: spacing.xs },
   timeColumns: { flexDirection: "row", gap: spacing.md, marginTop: spacing.sm }, timeColumn: { flex: 1 },
   columnTitle: { ...type.bodyStrong, textAlign: "center", marginBottom: spacing.sm },
-  timeList: { height: 140, flexGrow: 0, backgroundColor: colors.paper, borderRadius: radius.sm },
+  timeList: { height: 140, flexGrow: 0, backgroundColor: inputSurface, borderRadius: radius.sm },
   timeOption: { height: 40, justifyContent: "center", alignItems: "center", borderRadius: radius.sm },
   timeActions: { flexDirection: "row", justifyContent: "space-between", marginTop: spacing.sm },
   actionButton: { padding: spacing.sm, minHeight: 40, justifyContent: "center" },

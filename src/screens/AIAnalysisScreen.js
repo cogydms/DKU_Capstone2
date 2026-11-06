@@ -1,5 +1,7 @@
-import { View, Text, ScrollView, StyleSheet, Image, Pressable } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { pageContent } from "../theme/theme";
+import { Text } from "../components/Typography";
+import { View, ScrollView, StyleSheet, Image, Pressable } from "react-native";
+import ScreenSurface from "../components/ScreenSurface";
 import { Ionicons } from "@expo/vector-icons";
 import Card from "../components/Card";
 import Badge from "../components/Badge";
@@ -159,7 +161,7 @@ export default function AIAnalysisScreen({ navigation, route }) {
   const next = { documentId: params.documentId, view: params.view, analysis: params.analysis };
 
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+    <ScreenSurface style={styles.safe} edges={["bottom"]}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
           <View style={styles.donePill}>
@@ -214,7 +216,7 @@ export default function AIAnalysisScreen({ navigation, route }) {
         {params.analysis && sections.length > 0 && (
           <View style={styles.noteLine}>
             <Ionicons name="shield-checkmark" size={14} color={colors.stamp} />
-            <Text style={[styles.noteText, { color: "#2A4596", fontWeight: "600" }]}>
+            <Text style={[styles.noteText, { color: "#2F5EDD", fontWeight: "600" }]}>
               {hasIssues ? "표시가 없는 항목은 원문에서 확인했어요" : "모든 항목을 원문에서 확인했어요"}
             </Text>
           </View>
@@ -244,13 +246,13 @@ export default function AIAnalysisScreen({ navigation, route }) {
           <Text style={styles.fillBtnText}>AI 계획 만들기</Text>
         </Pressable>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenSurface>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
-  header: { alignItems: "center", gap: spacing.xs, marginBottom: spacing.sm },
+  header: { width: "100%", maxWidth: 1120, alignSelf: "center", alignItems: "center", gap: spacing.xs, marginBottom: spacing.sm },
   donePill: {
     flexDirection: "row",
     alignItems: "center",
@@ -261,12 +263,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   doneText: { fontSize: 13, lineHeight: 17, fontWeight: "700", color: colors.green, includeFontPadding: false },
-  summaryText: { fontSize: 15, fontWeight: "500", color: "#4B5565" },
+  summaryText: { fontSize: 15, fontWeight: "500", color: "#465E7C" },
   docTitle: { fontSize: 18, fontWeight: "700", color: colors.ink, lineHeight: 25, letterSpacing: -0.3 },
   docCardOuter: {
     padding: 0,
     marginTop: spacing.sm,
-    shadowColor: "#1F2E2B",
+    shadowColor: "#203D67",
     shadowOpacity: 0.06,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
@@ -278,7 +280,7 @@ const styles = StyleSheet.create({
   thumb: { width: 72, height: 96, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.line },
   thumbPlaceholder: { alignItems: "center", justifyContent: "center", backgroundColor: colors.paper, gap: 2 },
   thumbLabel: { fontSize: 10, fontWeight: "600", color: colors.muted },
-  container: { padding: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xxl },
+  container: { ...pageContent, padding: spacing.lg, paddingTop: spacing.md, paddingBottom: 112 },
   badgeRow: { flexDirection: "row", gap: spacing.sm },
   card: { marginTop: spacing.md, marginBottom: spacing.sm },
   warnCard: { backgroundColor: colors.alertSoft, borderColor: colors.alertSoft },

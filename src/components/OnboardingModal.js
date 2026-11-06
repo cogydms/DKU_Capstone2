@@ -1,7 +1,8 @@
+import { Text } from "./Typography";
 // 첫 실행 안내 (3장). 처음 로그인했을 때 한 번 뜨고, 설정 → 앱 소개 다시 보기로 다시 볼 수 있다.
 import React, { useEffect, useRef, useState } from "react";
-import { Modal, View, Text, ScrollView, Pressable, StyleSheet, useWindowDimensions } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Modal, View, ScrollView, Pressable, StyleSheet, useWindowDimensions } from "react-native";
+import ScreenSurface from "./ScreenSurface";
 import { Ionicons } from "@expo/vector-icons";
 import PrimaryButton from "./PrimaryButton";
 import { colors, radius, spacing, type } from "../theme/theme";
@@ -54,7 +55,7 @@ export default function OnboardingModal() {
 
   return (
     <Modal visible={visible} animationType="fade" onRequestClose={close}>
-      <SafeAreaView style={styles.safe}>
+      <ScreenSurface style={styles.safe}>
         <View style={[styles.frame, { width: pageWidth }]}>
           <View style={styles.topRow}>
             {!last ? (
@@ -97,7 +98,7 @@ export default function OnboardingModal() {
             <PrimaryButton tone="stamp" label={last ? "시작하기" : "다음"} onPress={() => (last ? close() : goTo(page + 1))} />
           </View>
         </View>
-      </SafeAreaView>
+      </ScreenSurface>
     </Modal>
   );
 }

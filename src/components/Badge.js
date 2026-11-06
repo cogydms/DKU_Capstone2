@@ -1,5 +1,6 @@
+import { Text } from "./Typography";
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { colors, radius, spacing } from "../theme/theme";
 
 const TONES = {

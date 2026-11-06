@@ -1,8 +1,9 @@
+import { Text, TextInput } from "./Typography";
 // 문서 목록: 올린 문서 전체를 제목 검색 + 상태 필터(진행 중 / 마감 지남 / 완료)로 본다.
 // 누르면 홈 카드와 같은 규칙: 등록한 문서는 관리 화면, 아니면 분석 결과.
 import React, { useCallback, useMemo, useState } from "react";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, ScrollView } from "react-native";
+import { View, Pressable, StyleSheet, ActivityIndicator, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Card from "./Card";
 import Badge from "./Badge";

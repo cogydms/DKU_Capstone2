@@ -93,6 +93,12 @@ Google 반환 URL scheme이 생성되는 것도 확인했다.
 빌드와 실제 로그인 확인은 남아 있다. 게스트 연결과 탈퇴 재인증은 단위 검사로
 확인했으며, 모바일의 실제 계정 흐름 전체가 검증된 것으로 간주하지 않는다.
 
+2026년 11월 6일 최신 `develop`의 PR #21 UI 변경을 병합한 뒤 프런트 단위 검사
+64개, JavaScript 파일 71개 구문 검사, 웹/iOS/Android Expo 내보내기가 통과했다.
+Google Sign-In과 `expo-linear-gradient`를 함께 포함한 Android arm64 디버그 앱도
+Gradle `assembleDebug` 빌드에 성공했다. 이 병합 검증에는 실제 계정 로그인·삭제와
+iOS Xcode 네이티브 빌드는 포함하지 않았다.
+
 `node --test tests/*.test.mjs`에서 네이티브 SDK와 Firebase를 대체한 단위 검사를
 실행한다. 취소/충돌 시 세션 보존, 동일 UID 연결, 잘못된 계정 재인증 거부,
 토큰 갱신, 설정 누락과 Expo Go 안전한 초기화를 검사한다. 실제 계정이나 DB에

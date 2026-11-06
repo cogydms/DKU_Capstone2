@@ -1,14 +1,16 @@
+import { inputSurface } from "../theme/theme";
+import { Text, TextInput } from "./Typography";
 import React, { useState } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import ScreenSurface from "./ScreenSurface";
 import { Ionicons } from "@expo/vector-icons";
 import Card from "./Card";
 import { colors, radius, spacing, type } from "../theme/theme";
 
 export function AuthScaffold({ title, subtitle, children }) {
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView style={styles.safe} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <ScreenSurface style={styles.safe}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.container}>
           <View style={styles.content}>
             <View style={styles.brandRow}>
@@ -26,7 +28,7 @@ export function AuthScaffold({ title, subtitle, children }) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </ScreenSurface>
   );
 }
 
@@ -72,12 +74,12 @@ const styles = StyleSheet.create({
   brand: { ...type.display },
   logo: { width: 38, height: 42, borderRadius: radius.md, backgroundColor: colors.stamp, alignItems: "center", justifyContent: "center" },
   check: { position: "absolute", bottom: -3, right: -4, width: 17, height: 17, borderRadius: 9, borderWidth: 1, borderColor: colors.stamp, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
-  card: { padding: spacing.xl },
+  card: { padding: 32 },
   subtitle: { color: colors.muted, marginTop: spacing.sm },
   form: { gap: spacing.lg, marginTop: spacing.xl },
   field: { gap: spacing.sm },
   inputRow: { position: "relative" },
-  input: { ...type.body, backgroundColor: colors.paper, borderColor: colors.line, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: spacing.lg, paddingVertical: 14, minHeight: 50 },
+  input: { ...type.body, backgroundColor: inputSurface, borderColor: colors.line, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: spacing.lg, paddingVertical: 14, minHeight: 50 },
   eye: { position: "absolute", right: spacing.lg, top: 15 },
   error: { ...type.body, color: colors.alert },
   link: { alignItems: "center", paddingVertical: spacing.sm, minHeight: 36 },

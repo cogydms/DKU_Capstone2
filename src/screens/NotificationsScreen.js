@@ -1,9 +1,11 @@
+import { pageContent } from "../theme/theme";
+import { Text } from "../components/Typography";
 // 알림함 (홈 오른쪽 위 🔔): 앞으로 보낼 마감·할 일 알림을 날짜별로 보여 준다.
 // 누르면 그 문서의 관리 화면으로 간다. 알림이 꺼져 있으면 설정으로 안내한다.
 import React, { useCallback, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View, ScrollView, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import ScreenSurface from "../components/ScreenSurface";
 import { Ionicons } from "@expo/vector-icons";
 import Card from "../components/Card";
 import { colors, spacing, type } from "../theme/theme";
@@ -66,7 +68,7 @@ export default function NotificationsScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+    <ScreenSurface style={styles.safe} edges={["bottom"]}>
       <ScrollView contentContainerStyle={styles.container}>
         {status !== "on" && !loading && (
           <Card style={styles.notice}>
@@ -119,13 +121,13 @@ export default function NotificationsScreen({ navigation }) {
           ))
         )}
       </ScrollView>
-    </SafeAreaView>
+    </ScreenSurface>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
-  container: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  container: { ...pageContent, padding: spacing.lg, paddingBottom: 112 },
   notice: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginBottom: spacing.lg, backgroundColor: colors.goldSoft, borderColor: colors.goldSoft },
   error: { ...type.small, color: colors.alert, marginBottom: spacing.md },
   empty: { alignItems: "center", gap: spacing.sm, paddingVertical: spacing.xl },

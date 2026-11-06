@@ -1,5 +1,6 @@
+import { Text } from "./Typography";
 import React from "react";
-import { Image, Pressable, StyleSheet, Text } from "react-native";
+import { Image, Pressable, StyleSheet } from "react-native";
 import { colors, radius, spacing } from "../theme/theme";
 
 export default function GoogleAccountButton({ label = "Google 계정으로 시작하기", onPress, disabled = false, accessibilityHint }) {
