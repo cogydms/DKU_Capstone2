@@ -1,7 +1,7 @@
 import { inputSurface } from "../theme/theme";
 import { Text, TextInput } from "./Typography";
 import React, { useState } from "react";
-import { Modal, View, Pressable, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
+import { Modal, View, Pressable, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Alert } from "react-native";
 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -26,6 +26,7 @@ export default function DocumentEditModal({
   document,
   onSave,
   onClose,
+  onOpenAnalysis,
 }) {
   const [title, setTitle] = useState(
     document?.title ?? ""
@@ -42,9 +43,42 @@ export default function DocumentEditModal({
   );
 
   const [saving, setSaving] = useState(false);
+  const [openingAnalysis, setOpeningAnalysis] = useState(false);
   const [error, setError] = useState("");
+  const busy = saving || openingAnalysis;
+
+  const openAnalysis = async () => {
+    if (busy || !onOpenAnalysis) return;
+    setOpeningAnalysis(true);
+    setError("");
+    try {
+      await onOpenAnalysis();
+    } catch (e) {
+      setError(e.message || "분석 결과를 불러오지 못했어요. 다시 시도해 주세요.");
+    } finally {
+      setOpeningAnalysis(false);
+    }
+  };
+
+  const handleOpenAnalysis = () => {
+    if (busy) return;
+    const originalDeadline = document?.deadline || "";
+    const changed = title !== (document?.title || "") || date !== originalDeadline.split("T")[0]
+      || time !== (originalDeadline.includes("T") ? originalDeadline.split("T")[1] : "");
+    if (!changed) return openAnalysis();
+    const message = "저장하지 않은 프로젝트 수정 내용은 반영되지 않아요. 분석 결과로 이동할까요?";
+    if (Platform.OS === "web") {
+      if (window.confirm(message)) openAnalysis();
+    } else {
+      Alert.alert("분석 결과로 이동", message, [
+        { text: "계속 수정", style: "cancel" },
+        { text: "저장하지 않고 이동", onPress: openAnalysis },
+      ]);
+    }
+  };
 
   const handleSave = async () => {
+    if (busy) return;
     const trimmedTitle = title.trim();
 
     if (!trimmedTitle) {
@@ -83,7 +117,7 @@ export default function DocumentEditModal({
       transparent
       animationType="fade"
       onRequestClose={() => {
-        if (!saving) onClose();
+        if (!busy) onClose();
       }}
     >
       <KeyboardAvoidingView
@@ -105,7 +139,9 @@ export default function DocumentEditModal({
               </Text>
 
               <Pressable
-                disabled={saving}
+                accessibilityRole="button"
+                accessibilityLabel="프로젝트 수정 닫기"
+                disabled={busy}
                 onPress={onClose}
                 hitSlop={8}
                 style={styles.closeButton}
@@ -174,7 +210,7 @@ export default function DocumentEditModal({
 
             <View style={styles.buttons}>
               <Pressable
-                disabled={saving}
+                disabled={busy}
                 onPress={onClose}
                 style={styles.cancelButton}
               >
@@ -190,11 +226,21 @@ export default function DocumentEditModal({
                       ? "저장 중…"
                       : "수정 저장"
                   }
-                  disabled={saving}
+                  disabled={busy}
                   onPress={handleSave}
                 />
               </View>
             </View>
+            {!!onOpenAnalysis && <View style={styles.analysisSection}>
+              <Text style={styles.analysisDescription}>저장된 분석 결과와 원문 근거를 다시 확인할 수 있어요.</Text>
+              <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy}
+                onPress={handleOpenAnalysis}
+                style={({ pressed }) => [styles.analysisButton, pressed && { opacity: 0.7 }, busy && { opacity: 0.55 }]}>
+                <Ionicons name="document-text-outline" size={19} color={colors.stamp} />
+                <Text style={styles.analysisButtonText}>{openingAnalysis ? "분석 결과 불러오는 중…" : "AI 분석 결과로 돌아가기"}</Text>
+                <Ionicons name="arrow-forward" size={18} color={colors.stamp} />
+              </Pressable>
+            </View>}
           </Card>
         </SafeAreaView>
       </KeyboardAvoidingView>
@@ -276,4 +322,9 @@ const styles = StyleSheet.create({
   saveButton: {
     flex: 1,
   },
+  analysisSection: { marginTop: spacing.lg, paddingTop: spacing.lg, borderTopWidth: 1, borderTopColor: colors.line, gap: spacing.sm },
+  analysisDescription: { ...type.small, lineHeight: 18 },
+  analysisButton: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm,
+    borderWidth: 1, borderColor: colors.stamp, borderRadius: radius.md, padding: spacing.md, backgroundColor: colors.stampSoft },
+  analysisButtonText: { ...type.bodyStrong, color: colors.stamp, flexShrink: 1 },
 });

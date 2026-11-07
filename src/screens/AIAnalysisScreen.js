@@ -1,28 +1,15 @@
-import { pageContent } from "../theme/theme";
+import React, { useCallback, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { Text } from "../components/Typography";
 import { View, ScrollView, StyleSheet, Image, Pressable } from "react-native";
 import ScreenSurface from "../components/ScreenSurface";
 import { Ionicons } from "@expo/vector-icons";
 import Card from "../components/Card";
 import Badge from "../components/Badge";
-import PrimaryButton from "../components/PrimaryButton";
-import { colors, spacing, type, radius } from "../theme/theme";
+import { colors, evidenceReviewColors, pageContent, spacing, type, radius } from "../theme/theme";
 import { analysisDetail as mockDetail } from "../data/mockData";
-
-const REVIEW_THRESHOLD = 80; // 백엔드 REVIEW_THRESHOLD 와 맞춤
-
-function Item({ text, confidence, prefix }) {
-  const low = confidence != null && confidence < REVIEW_THRESHOLD;
-  return (
-    <View style={styles.itemRow}>
-      <Text style={[type.body, { flex: 1 }]}>
-        {prefix}
-        {text}
-      </Text>
-      {low && <Badge label="확인 필요" tone="alert" />}
-    </View>
-  );
-}
+import { getDocument } from "../services/api";
+import { splitAnalysisItems } from "../utils/evidenceReview";
 
 function Thumbnail({ preview }) {
   if (preview?.kind === "image" && preview.uri) {
@@ -37,7 +24,6 @@ function Thumbnail({ preview }) {
   );
 }
 
-const ISSUE_FG = "#8A6514";
 function parseDeadline(iso) {
   if (!iso) return null;
   const [datePart, timePart] = iso.split("T");
@@ -96,6 +82,7 @@ const SECTION_ICONS = {
   event: "people",
   benefit: "gift",
   contact: "call",
+  confirmed: "checkmark-circle",
 };
 
 function SectionRow({ section, isLast }) {
@@ -114,7 +101,10 @@ function SectionRow({ section, isLast }) {
       {section.items.map((it, i) => (
         <View key={it.fieldId ?? i} style={styles.itemLine}>
           {multi && <View style={styles.bulletDot} />}
-          <Text style={styles.itemText}>{it.text}</Text>
+          <View style={styles.itemContent}>
+            <Text style={styles.itemText}>{it.text}</Text>
+            {it.status === "user_confirmed" && <Badge label="사용자가 직접 확인한 문항" tone="green" />}
+          </View>
         </View>
       ))}
     </View>
@@ -135,34 +125,55 @@ function legacySections(d) {
 }
 
 export default function AIAnalysisScreen({ navigation, route }) {
-  const params = route.params ?? {};
+  const initialParams = route.params ?? {};
+  const documentId = initialParams.documentId;
+  const [refreshed, setRefreshed] = useState(null);
+  const [refreshError, setRefreshError] = useState("");
+  const [reload, setReload] = useState(0);
+
+  // 원문 확인에서 항목을 수정·제외하고 돌아오면 저장된 결과를 다시 보여준다.
+  useFocusEffect(useCallback(() => {
+    if (!documentId) return;
+    let active = true;
+    setRefreshError("");
+    getDocument(documentId)
+      .then((result) => { if (active) setRefreshed(result); })
+      .catch((e) => { if (active) setRefreshError(e.message); });
+    return () => { active = false; };
+  }, [documentId, reload]));
+
+  const params = refreshed?.documentId === documentId ? { ...initialParams, ...refreshed } : initialParams;
   const d = params.view ?? mockDetail;
   const warnings = d.warnings ?? [];
   const isMock = !params.view;
   const summary = d.summary ?? `${d.docType}로 판단했어요.`;
   const tags = d.tags ?? [d.docType];
-  const sections = d.sections ?? legacySections(d);
-  const fields = params.analysis?.fields ?? [];
-  const unverifiedCount = fields.filter((f) => f.status === "unverified").length;
-  const reviewCount = fields.filter((f) => f.status === "needs_review").length;
-  const hasIssues = unverifiedCount + reviewCount > 0;
-
-  // 경고 띠 문구: "근거를 못 찾은 항목 1개 · 확인이 필요한 항목 2개"
-  const issueText = [
-    unverifiedCount && `근거를 못 찾은 항목 ${unverifiedCount}개`,
-    reviewCount && `확인이 필요한 항목 ${reviewCount}개`,
-  ].filter(Boolean).join(" · ");
+  const { reviewFields, normalSections } = splitAnalysisItems(
+    d.sections ?? legacySections(d), params.analysis?.fields ?? []
+  );
+  const hasIssues = reviewFields.length > 0;
+  const hasUserConfirmed = normalSections.some((section) => section.items.some((item) => item.status === "user_confirmed"));
 
   // 나머지 경고 (경고 띠와 겹치는 문구는 뺌)
   const dday = ddayInfo(d.deadline?.datetime);
   const notes = warnings.filter(
     (w) => !w.includes("근거를 찾지 못한") && !(dday && w.includes("이미 지났습니다"))
-  );  
+      && !(d.deadline && w.includes("마감일을 찾지 못했습니다"))
+  );
   const next = { documentId: params.documentId, view: params.view, analysis: params.analysis };
+  const openEvidence = (focusFieldId) => navigation.push("EvidenceCheck", {
+    ...next, focusFieldId, planRegistered: !!params.plan?.registered,
+  });
 
   return (
     <ScreenSurface style={styles.safe} edges={["bottom"]}>
       <ScrollView contentContainerStyle={styles.container}>
+        {!!refreshError && <View style={{ gap: spacing.sm, marginBottom: spacing.md }}>
+          <Text accessibilityRole="alert" style={[type.small, { color: colors.alert }]}>{refreshError}</Text>
+          <Pressable accessibilityRole="button" onPress={() => setReload((value) => value + 1)}>
+            <Text style={[type.bodyStrong, { color: colors.stamp }]}>최신 분석 결과 다시 불러오기</Text>
+          </Pressable>
+        </View>}
         <View style={styles.header}>
           <View style={styles.donePill}>
             <Ionicons name="checkmark-circle" size={14} color={colors.green} />
@@ -197,15 +208,28 @@ export default function AIAnalysisScreen({ navigation, route }) {
         </Card>
 
         {hasIssues && (
-          <Pressable
-            style={({ pressed }) => [styles.issueBand, pressed && styles.btnPressed]}
-            onPress={() => navigation.navigate("EvidenceCheck", next)}
-          >
-            <Ionicons name="alert-circle" size={16} color={ISSUE_FG} />
-            <Text style={styles.issueText}>{issueText}</Text>
-            <Text style={styles.issueLink}>원문 보기</Text>
-            <Ionicons name="chevron-forward" size={14} color={ISSUE_FG} />
-          </Pressable>
+          <View style={styles.reviewGroup}>
+            <Pressable accessibilityRole="button"
+              style={({ pressed }) => [styles.issueBand, pressed && styles.btnPressed]}
+              onPress={() => openEvidence(reviewFields[0].id)}>
+              <Ionicons name="alert-circle" size={18} color={evidenceReviewColors.ink} />
+              <Text style={styles.issueText}>확인이 필요한 항목 {reviewFields.length}개</Text>
+              <Text style={styles.issueLink}>원문 보기</Text>
+              <Ionicons name="chevron-forward" size={14} color={evidenceReviewColors.ink} />
+            </Pressable>
+            {reviewFields.map((field) => (
+              <Pressable key={field.id} accessibilityRole="button"
+                accessibilityHint="해당 항목의 원문 근거를 열어요"
+                style={({ pressed }) => [styles.reviewItem, pressed && styles.btnPressed]}
+                onPress={() => openEvidence(field.id)}>
+                <View style={styles.reviewItemBody}>
+                  <Text style={styles.reviewLabel}>{field.label} · {field.status === "unverified" ? "근거 없음" : "확인 필요"}</Text>
+                  <Text style={styles.reviewValue}>{field.value}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={evidenceReviewColors.ink} />
+              </Pressable>
+            ))}
+          </View>
         )}
         {notes.map((w, i) => (
           <View key={i} style={styles.noteLine}>
@@ -213,27 +237,30 @@ export default function AIAnalysisScreen({ navigation, route }) {
             <Text style={styles.noteText}>{w}</Text>
           </View>
         ))}
-        {params.analysis && sections.length > 0 && (
+        {params.analysis && normalSections.length > 0 && (
           <View style={styles.noteLine}>
             <Ionicons name="shield-checkmark" size={14} color={colors.stamp} />
             <Text style={[styles.noteText, { color: "#2F5EDD", fontWeight: "600" }]}>
-              {hasIssues ? "표시가 없는 항목은 원문에서 확인했어요" : "모든 항목을 원문에서 확인했어요"}
+              {hasUserConfirmed ? "직접 확인한 문항에는 별도 표시가 있어요"
+                : hasIssues ? "표시가 없는 항목은 원문에서 확인했어요" : "모든 항목을 원문에서 확인했어요"}
             </Text>
           </View>
         )}
 
-        <Card style={styles.sectionsCard}>
-          {sections.length === 0 && (
-            <Text style={styles.itemText}>추출된 정보가 없어요. 원문을 확인해 주세요.</Text>
-          )}
-          {sections.map((s, i) => (
-            <SectionRow key={s.key} section={s} isLast={i === sections.length - 1} />
-          ))}
-        </Card>
+        {(!hasIssues || normalSections.length > 0) && (
+          <Card style={styles.sectionsCard}>
+            {normalSections.length === 0 && (
+              <Text style={styles.itemText}>추출된 정보가 없어요. 원문을 확인해 주세요.</Text>
+            )}
+            {normalSections.map((s, i) => (
+              <SectionRow key={s.key} section={s} isLast={i === normalSections.length - 1} />
+            ))}
+          </Card>
+        )}
 
         <Pressable
           style={({ pressed }) => [styles.outlineBtn, pressed && styles.btnPressed]}
-          onPress={() => navigation.navigate("EvidenceCheck", next)}
+          onPress={() => openEvidence()}
         >
           <Ionicons name="document-text-outline" size={18} color={colors.stamp} />
           <Text style={styles.outlineBtnText}>원문 근거 보기</Text>
@@ -243,7 +270,7 @@ export default function AIAnalysisScreen({ navigation, route }) {
           style={({ pressed }) => [styles.fillBtn, pressed && styles.btnPressed]}
           onPress={() => navigation.navigate("ActionPlan", next)}
         >
-          <Text style={styles.fillBtnText}>AI 계획 만들기</Text>
+          <Text style={styles.fillBtnText}>{params.plan?.registered ? "준비 계획 확인·수정" : "AI 계획 만들기"}</Text>
         </Pressable>
       </ScrollView>
     </ScreenSurface>
@@ -285,7 +312,6 @@ const styles = StyleSheet.create({
   card: { marginTop: spacing.md, marginBottom: spacing.sm },
   warnCard: { backgroundColor: colors.alertSoft, borderColor: colors.alertSoft },
   label: { ...type.label, marginBottom: spacing.xs, textTransform: "none" },
-  itemRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: 2 },
 
     warnBox: {
     flexDirection: "row",
@@ -306,6 +332,7 @@ const styles = StyleSheet.create({
   rowHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: spacing.sm },
   rowTitle: { fontSize: 16, fontWeight: "700", color: colors.ink },
   itemLine: { flexDirection: "row", gap: 8 },
+  itemContent: { flex: 1, minWidth: 0, gap: spacing.xs },
   bulletDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: colors.muted, marginTop: 8.5 },
   itemText: { flex: 1, fontSize: 15, lineHeight: 22, color: colors.ink },
   chip: { height: 22, paddingHorizontal: 8, borderRadius: radius.sm, justifyContent: "center" },
@@ -333,18 +360,29 @@ const styles = StyleSheet.create({
   },
   fillBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
   btnPressed: { opacity: 0.8, transform: [{ scale: 0.98 }] },
+  reviewGroup: { marginTop: spacing.md, gap: spacing.sm },
   issueBand: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: colors.goldSoft,
+    backgroundColor: evidenceReviewColors.surface,
+    borderWidth: 1,
+    borderColor: evidenceReviewColors.border,
     borderRadius: radius.md,
     paddingVertical: 10,
     paddingHorizontal: spacing.md,
-    marginTop: spacing.md,
   },
-  issueText: { flex: 1, fontSize: 13, fontWeight: "700", color: ISSUE_FG },
-  issueLink: { fontSize: 12, fontWeight: "600", color: ISSUE_FG },
+  issueText: { flex: 1, fontSize: 14, fontWeight: "700", color: evidenceReviewColors.ink },
+  issueLink: { fontSize: 12, fontWeight: "600", color: evidenceReviewColors.ink },
+  reviewItem: {
+    flexDirection: "row", alignItems: "center", gap: spacing.sm,
+    padding: spacing.md, borderRadius: radius.sm,
+    backgroundColor: evidenceReviewColors.surface,
+    borderLeftWidth: 4, borderLeftColor: evidenceReviewColors.border,
+  },
+  reviewItemBody: { flex: 1, gap: spacing.xs },
+  reviewLabel: { fontSize: 12, fontWeight: "700", color: evidenceReviewColors.ink },
+  reviewValue: { fontSize: 15, lineHeight: 22, fontWeight: "600", color: evidenceReviewColors.ink },
   noteLine: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: spacing.sm, paddingHorizontal: 2 },
   noteText: { flex: 1, fontSize: 12, lineHeight: 17, color: colors.muted },
 
