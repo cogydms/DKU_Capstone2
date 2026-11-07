@@ -4,7 +4,7 @@ import FloatingTabs from "../components/FloatingTabs";
 import HomeScreen from "../screens/HomeScreen";
 import CalendarScreen from "../screens/CalendarScreen";
 import TodosScreen from "../screens/TodosScreen";
-import SettingsScreen from "../screens/SettingsScreen";
+import DocumentsScreen from "../screens/DocumentsScreen";
 
 const Tab = createBottomTabNavigator();
 function AddPlaceholder() { return null; }
@@ -19,6 +19,6 @@ export default function MainTabs() {
         navigation.navigate("DocumentAdd");
       } })} />
     <Tab.Screen name="Todos" component={TodosScreen} options={{ title: "할 일" }} />
-    <Tab.Screen name="Settings" component={SettingsScreen} options={{ title: "설정" }} />
+    <Tab.Screen name="Documents" component={DocumentsScreen} options={{ title: "문서" }} />
   </Tab.Navigator>;
 }

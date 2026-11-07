@@ -18,6 +18,7 @@ import AccountSection from "../components/settings/AccountSection";
 import { useAuth } from "../contexts/AuthContext";
 import { authErrorMessage } from "../utils/authForm";
 import { colors, radius, spacing, type } from "../theme/theme";
+import { backOrHome } from "../navigation/routes";
 import { REMINDER_HOURS, hourLabel } from "../utils/notificationPlan";
 import { showOnboarding } from "../services/onboarding";
 import {
@@ -37,7 +38,7 @@ function noticeText(state, hour) {
   }
 }
 
-export default function SettingsScreen() {
+export default function SettingsScreen({ navigation }) {
   const { logout, busy, user } = useAuth();
   const guest = !!user?.isAnonymous;
   const [error, setError] = useState("");
@@ -86,15 +87,13 @@ export default function SettingsScreen() {
   return (
     <ScreenSurface style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
-        {deleting ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="설정으로 돌아가기" disabled={busy}
-            onPress={() => setDeleting(false)} hitSlop={8} style={styles.back}>
+        <View style={styles.back}>
+          <Pressable accessibilityRole="button" accessibilityLabel={deleting ? "설정으로 돌아가기" : "이전 화면으로 돌아가기"} disabled={busy}
+            onPress={() => deleting ? setDeleting(false) : backOrHome(navigation)} hitSlop={8} style={styles.backButton}>
             <Ionicons name="chevron-back" size={22} color={colors.ink} />
-            <Text style={type.display}>{guest ? "게스트 데이터 삭제" : "회원 탈퇴"}</Text>
           </Pressable>
-        ) : (
-          <Text style={type.display}>설정</Text>
-        )}
+          <Text accessibilityRole="header" style={type.display}>{deleting ? (guest ? "게스트 데이터 삭제" : "회원 탈퇴") : "설정"}</Text>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
@@ -197,6 +196,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
   header: { width: "100%", maxWidth: 1120, alignSelf: "center", paddingHorizontal: spacing.lg, paddingTop: 24, paddingBottom: 24 },
   back: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  backButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   container: { ...pageContent, padding: spacing.lg, paddingTop: 0, paddingBottom: 112 },
   sectionTitle: { ...type.label, fontSize: 12, marginBottom: spacing.xs, marginTop: spacing.sm },
   card: { marginBottom: spacing.lg },

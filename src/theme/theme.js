@@ -20,6 +20,8 @@ export const colors = {
   greenSoft: "#E0EEEA",
 };
 
+export const evidenceReviewColors = { ink: "#8D2330", border: "#C34C59", surface: "#FBE0E3" };
+
 export const confidenceColor = (pct) => {
   if (pct >= 90) return colors.stamp;
   if (pct >= 70) return colors.gold;
@@ -44,7 +46,7 @@ export const gradients = {
   page: ["#B7C8DE", "#CCD9EA", "#9EB8D5"],
   glass: ["rgba(234,243,255,0.82)", "rgba(198,216,239,0.72)"],
   header: ["#D4E1F1", "#BBCEE6"],
-  hero: ["#1B3459", "#254D84", "#356FBA"],
+  hero: ["#365781", "#4B74A4", "#6893C2"],
   action: ["#416FEF", "#2850C9"],
 };
 

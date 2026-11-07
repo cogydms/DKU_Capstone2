@@ -23,7 +23,7 @@ export default function DocumentHero({ onPress }) {
   </View>;
 }
 const styles = StyleSheet.create({
-  hero: { backgroundColor: "#1B3459", minHeight: 222, borderRadius: radius.lg,
+  hero: { backgroundColor: "#365781", minHeight: 222, borderRadius: radius.lg,
     padding: 30, marginBottom: 24, overflow: "hidden", justifyContent: "center",
     borderWidth: 1, borderColor: "rgba(229,240,255,0.6)",
     shadowColor: "#203D67", shadowOpacity: 0.2, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 4 },

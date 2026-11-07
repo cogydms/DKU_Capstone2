@@ -10,7 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Card from "../components/Card";
 import ProgressBar from "../components/ProgressBar";
 import { colors, spacing, type, radius } from "../theme/theme";
-import { listTodos, updateTodo,  editTodo, deleteTodo, listDocuments, updateDocument, deleteDocument } from "../services/api";
+import { listTodos, updateTodo, editTodo, deleteTodo, listDocuments, updateDocument, deleteDocument, getDocument } from "../services/api";
 import { formatStepDate, getDday, localPlanDate } from "../utils/preparationPlan";
 import { daysUntil, googleCalendarUrl, isOverdue, nextTodo, splitDeadline } from "../utils/todoManagement";
 import { ddayTone, DDAY_COLORS } from "../utils/dday";
@@ -169,6 +169,15 @@ export default function ManagementScreen({ navigation, route }) {
       setError(e.message);
       throw e;
     }
+  };
+
+  const openAnalysis = async () => {
+    const id = editingDocument?.id || documentId;
+    if (!id) throw new Error("문서를 찾을 수 없어요. 관리 화면을 다시 열어 주세요.");
+    const result = await getDocument(id);
+    if (!result.view || !result.analysis) throw new Error("저장된 분석 결과를 찾을 수 없어요.");
+    setEditingDocument(null);
+    navigation.navigate("AIAnalysis", { ...result, preview: { kind: result.sourceKind } });
   };
 
   const removeDocument = async () => {
@@ -500,6 +509,7 @@ export default function ManagementScreen({ navigation, route }) {
         <DocumentEditModal
           document={editingDocument}
           onSave={handleDocumentEditSave}
+          onOpenAnalysis={openAnalysis}
           onClose={() =>
             setEditingDocument(null)
           }

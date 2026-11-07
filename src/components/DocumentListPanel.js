@@ -26,6 +26,8 @@ export default function DocumentListPanel() {
   const navigation = useNavigation();
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const initialLoading = loading && !hasLoaded;
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
@@ -38,7 +40,7 @@ export default function DocumentListPanel() {
     setLoading(true);
     setError("");
     listDocuments()
-      .then((docs) => { if (active) setDocuments(docs); })
+      .then((docs) => { if (active) { setDocuments(docs); setHasLoaded(true); } })
       .catch((e) => { if (active) setError(e.message); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -144,7 +146,7 @@ export default function DocumentListPanel() {
         </View>
       )}
 
-      {loading && documents.length === 0 ? (
+      {initialLoading && documents.length === 0 ? (
         <Card><ActivityIndicator color={colors.stamp} /></Card>
       ) : documents.length === 0 && !error ? (
         <EmptyStart />

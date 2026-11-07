@@ -4,6 +4,7 @@ import { Text } from "../components/Typography";
 import React, { useCallback, useMemo, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { View, ScrollView, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import AppHeader from "../components/AppHeader";
 import ScreenSurface from "../components/ScreenSurface";
 import { Ionicons } from "@expo/vector-icons";
 import Card from "../components/Card";
@@ -22,6 +23,8 @@ export default function CalendarScreen({ navigation }) {
   const [documents, setDocuments] = useState([]);
   const [todos, setTodos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const initialLoading = loading && !hasLoaded;
   const [error, setError] = useState("");
   const [openingId, setOpeningId] = useState(null);
   const [reload, setReload] = useState(0);
@@ -35,6 +38,7 @@ export default function CalendarScreen({ navigation }) {
       .then(([docs, items]) => {
         if (!active) return;
         setDocuments(docs);
+        setHasLoaded(true);
         setTodos(items);
       })
       .catch((e) => active && setError(e.message))
@@ -80,12 +84,11 @@ export default function CalendarScreen({ navigation }) {
 
   return (
     <ScreenSurface style={styles.safe} edges={["top"]}>
+      <AppHeader title="캘린더" />
       <ScrollView contentContainerStyle={styles.container}>
-        <Text accessibilityRole="header" style={[type.display, { marginBottom: 8 }]}>캘린더</Text>
-        <Text style={[type.body, { color: colors.muted, marginBottom: 24 }]}>다가오는 일정, 차근차근 준비하세요.</Text>
         <View style={styles.topRow}>
           <Text style={styles.summary}>
-            {loading ? "불러오는 중…" : `${month.getMonth() + 1}월 마감 ${monthCount}개`}
+            {initialLoading ? "불러오는 중…" : `${month.getMonth() + 1}월 마감 ${monthCount}개`}
           </Text>
           <Pressable accessibilityRole="button" onPress={goToday} hitSlop={8} style={styles.todayButton}>
             <Text style={styles.todayButtonText}>오늘</Text>
@@ -112,7 +115,7 @@ export default function CalendarScreen({ navigation }) {
 
         <Text style={styles.dayTitle}>{dateLabel(selected)}{selected === todayKey ? " · 오늘" : ""}</Text>
 
-        {loading ? (
+        {initialLoading ? (
           <Card><ActivityIndicator color={CALENDAR_ACCENT} /></Card>
         ) : day.deadlines.length === 0 && day.todos.length === 0 ? (
           <Card><Text style={type.small}>이 날은 마감이나 할 일이 없어요.</Text></Card>
@@ -169,7 +172,7 @@ export default function CalendarScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
-  container: { ...pageContent, padding: spacing.lg, paddingBottom: 112 },
+  container: { ...pageContent, padding: spacing.lg, paddingTop: 0, paddingBottom: 112 },
   topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.md },
   summary: { ...type.bodyStrong, color: colors.muted },
   todayButton: { borderWidth: 1, borderColor: colors.line, borderRadius: 999, paddingHorizontal: spacing.md, paddingVertical: 6, backgroundColor: colors.surface },
