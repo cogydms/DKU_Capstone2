@@ -2,12 +2,13 @@ import { dialogGlass } from "../theme/theme";
 import { pageContent } from "../theme/theme";
 import { Text } from "../components/Typography";
 // src/screens/ManagementScreen.js
-import React, { useCallback, useLayoutEffect, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { View, ScrollView, Pressable, StyleSheet, ActivityIndicator, Alert, Platform, Linking, Modal } from "react-native";
 import ScreenSurface from "../components/ScreenSurface";
 import { Ionicons } from "@expo/vector-icons";
 import Card from "../components/Card";
+import NoticeAffiliation from "../components/NoticeAffiliation";
 import ProgressBar from "../components/ProgressBar";
 import { colors, spacing, type, radius } from "../theme/theme";
 import { listTodos, updateTodo, editTodo, deleteTodo, listDocuments, updateDocument, deleteDocument, getDocument } from "../services/api";
@@ -39,14 +40,32 @@ function todoCalendarUrl(item) {
 
 export default function ManagementScreen({ navigation, route }) {
   const documentId = route?.params?.documentId;
+  const notificationTodoId = route?.params?.todoId;
+  const scroll = useRef(null);
+  const notificationRow = useRef(null);
   const [todoList, setTodoList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
   const [doc, setDoc] = useState(null);
+  const [analysisDocument, setAnalysisDocument] = useState(null);
   const [editingTodo, setEditingTodo] = useState(null);
   const [showDocumentMenu, setShowDocumentMenu] = useState(false);
   const [editingDocument, setEditingDocument] = useState(null);
+  const analysisDocumentId = documentId || doc?.id;
+  const affiliationFields = analysisDocument?.documentId === analysisDocumentId ? analysisDocument?.analysis?.fields : null;
+
+  useEffect(() => {
+    if (loading || !notificationTodoId) return;
+    const frame = requestAnimationFrame(() => {
+      const content = scroll.current?.getInnerViewRef();
+      if (!content) return;
+      notificationRow.current?.measureLayout(content, (_x, y) => {
+        scroll.current?.scrollTo({ y: Math.max(0, y - spacing.md), animated: true });
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [loading, notificationTodoId]);
   
   // 탭 구조: 쌓인 화면을 걷어내고 홈 탭으로 (routes.js)
   const goHome = useCallback(() => resetToHome(navigation), [navigation]);
@@ -79,6 +98,15 @@ export default function ManagementScreen({ navigation, route }) {
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [documentId]));
+
+  useFocusEffect(useCallback(() => {
+    if (!analysisDocumentId) return;
+    let active = true;
+    getDocument(analysisDocumentId)
+      .then((result) => { if (active) setAnalysisDocument(result); })
+      .catch(() => { if (active) setAnalysisDocument(null); });
+    return () => { active = false; };
+  }, [analysisDocumentId]));
 
   const handleToggle = async (todoId, currentStatus) => {
     if (busyId) return;
@@ -253,7 +281,7 @@ export default function ManagementScreen({ navigation, route }) {
 
   return (
     <ScreenSurface style={styles.safe} edges={["bottom"]}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView ref={scroll} contentContainerStyle={styles.container}>
         <Text style={type.h1}>등록 후 관리</Text>
         <Text style={styles.subtitle}>마감일까지 진행 상황을 지켜볼게요</Text>
         {!!error && <Text accessibilityRole="alert" style={[type.small, { color: colors.alert }]}>{error}</Text>}
@@ -307,6 +335,9 @@ export default function ManagementScreen({ navigation, route }) {
               {formatStepDate(deadline.date)}{deadline.time ? ` ${deadline.time}` : ""} 마감
             </Text>
           )}
+          {affiliationFields?.length > 0 && (
+            <NoticeAffiliation fields={affiliationFields} collegeOrDepartmentOnly style={styles.affiliation} />
+          )}
 
           <View style={{ marginVertical: spacing.md }}>
             <ProgressBar progress={progress} color={allDone ? "#2a7ea1" : colors.stamp} />
@@ -338,7 +369,8 @@ export default function ManagementScreen({ navigation, route }) {
             <Text style={styles.emptyText}>등록된 할 일이 없습니다.</Text>
           ) : (
             todoList.map((item) => (
-              <View key={item.id} style={styles.stepRow}>
+              <View key={item.id} ref={item.id === notificationTodoId ? notificationRow : undefined}
+                style={[styles.stepRow, item.id === notificationTodoId && styles.notificationStep]}>
                 {/* 체크박스 & 텍스트 영역 */}
                 <Pressable
                   style={styles.todoContent}
@@ -541,6 +573,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 8,
   },
+  notificationStep: { backgroundColor: colors.stampSoft, borderRadius: radius.sm },
   todoContent: {
     flexDirection: "row",
     alignItems: "center",
@@ -571,6 +604,7 @@ const styles = StyleSheet.create({
   ddayBadge: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md },
   ddayText: { fontSize: 18, fontWeight: "700", includeFontPadding: false },
   deadlineText: { fontSize: 13, color: "#465E7C", marginTop: 4 },
+  affiliation: { marginTop: spacing.md },
   todoTitle: { fontSize: 15, lineHeight: 21, color: colors.ink },
   todoDate: { fontSize: 12, color: colors.muted, marginTop: 2 },
   overdueText: { color: colors.alert, fontWeight: "700" },
