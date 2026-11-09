@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import datetime
 from typing import Optional
@@ -258,9 +259,20 @@ def confirm_field(doc_id: str, field_id: str, body: ConfirmBody, store=Depends(u
     if not field:
         raise HTTPException(404, "필드를 찾을 수 없습니다.")
     if body.value is not None:
-        field.value = body.value
-    if body.normalized_datetime is not None:
-        field.normalized_datetime = body.normalized_datetime
+        value = body.value.strip()
+        if not value:
+            raise HTTPException(422, "수정할 내용을 입력해 주세요.")
+        field.value = value
+    if "normalized_datetime" in body.model_fields_set:
+        normalized = body.normalized_datetime
+        if normalized is not None:
+            try:
+                if not re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2})?", normalized):
+                    raise ValueError
+                datetime.fromisoformat(normalized)
+            except ValueError as exc:
+                raise HTTPException(422, "올바른 날짜와 시간을 선택해 주세요.") from exc
+        field.normalized_datetime = normalized
     field.status = "user_confirmed"
     field.confidence = 100
     analysis.needs_review = any(field.status in ("needs_review", "unverified") for field in analysis.fields)

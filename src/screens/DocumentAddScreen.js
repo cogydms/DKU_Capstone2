@@ -22,8 +22,6 @@ const INPUT_METHODS = [
     icon: "document-text", color: colors.alert, bg: colors.alertSoft },
   { id: "text", label: "텍스트 붙여넣기", desc: "복사한 공지 내용을 붙여넣어요",
     icon: "clipboard", color: colors.gold, bg: colors.goldSoft },
-  { id: "link", label: "링크 붙여넣기", icon: "link", soon: true },
-  { id: "email", label: "이메일 전달", icon: "mail", soon: true },
 ];
 
 // 백엔드 파이프라인 단계에 맞춘 로딩 문구 (실제 진행률이 아니라 대기 중 안내용)
@@ -51,12 +49,12 @@ function showError(message) {
 }
 
 function MethodRow({ m, onPress }) {
-  const off = m.soon || (m.mobileOnly && IS_WEB); // 준비 중이거나, 웹에서 못 쓰는 기능(카메라)
-  const desc = m.soon ? "준비 중이에요" : off ? "휴대폰 앱에서만 사용할 수 있어요" : m.desc;
+  const off = m.mobileOnly && IS_WEB;
+  const desc = off ? "휴대폰 앱에서만 사용할 수 있어요" : m.desc;
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.row, off && styles.rowSoon, pressed && styles.rowPressed]}
+      style={({ pressed }) => [styles.row, off && styles.rowUnavailable, pressed && styles.rowPressed]}
     >
       {!off && <GlassTint radius={24} />}
       <View style={[styles.iconBox, { backgroundColor: off ? colors.line : m.bg }]}>
@@ -138,7 +136,6 @@ export default function DocumentAddScreen({ navigation }) {
   };
 
   const handlePick = (m) => {
-    if (m.soon) return showError(`${m.label}는 준비 중이에요. 지금은 사진·PDF·텍스트로 추가해 주세요.`);
     if (m.id === "camera") return pickCamera();
     if (m.id === "library") return pickLibrary();
     if (m.id === "pdf") return pickPdf();
@@ -232,21 +229,14 @@ export default function DocumentAddScreen({ navigation }) {
     <ScreenSurface style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={type.h1}>문서 추가하기</Text>
-        <Text style={styles.subtitle}>다양한 방법으로 문서를 공유할 수 있어요</Text>
+        <Text style={styles.subtitle}>사진·PDF·텍스트로 문서를 추가할 수 있어요</Text>
         {pendingDocumentId && <View style={{ marginBottom: spacing.lg }}>
           <PrimaryButton label="저장된 원문으로 다시 분석" tone="stamp"
             onPress={() => run(() => retryDocument(pendingDocumentId), { kind: "text" })} />
         </View>}
 
         <View style={styles.list}>
-          {INPUT_METHODS.filter((m) => !m.soon).map((m) => (
-            <MethodRow key={m.id} m={m} onPress={() => handlePick(m)} />
-          ))}
-        </View>
-
-        <Text style={styles.groupTitle}>다른 방법으로 추가하기</Text>
-        <View style={styles.list}>
-          {INPUT_METHODS.filter((m) => m.soon).map((m) => (
+          {INPUT_METHODS.map((m) => (
             <MethodRow key={m.id} m={m} onPress={() => handlePick(m)} />
           ))}
         </View>
@@ -277,7 +267,7 @@ const styles = StyleSheet.create({
     shadowOffset: glass.shadowOffset,
     elevation: 1,
   },
-  rowSoon: { backgroundColor: colors.paper, shadowOpacity: 0, elevation: 0 },
+  rowUnavailable: { backgroundColor: colors.paper, shadowOpacity: 0, elevation: 0 },
   rowPressed: { opacity: 0.7, transform: [{ scale: 0.98 }] },
   iconBox: {
     width: 44,
@@ -289,13 +279,6 @@ const styles = StyleSheet.create({
   rowText: { flex: 1, gap: 2 },
   rowLabel: { fontSize: 16, fontWeight: "700", color: colors.ink },
   rowDesc: { fontSize: 13, color: "#465E7C" },
-  groupTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: colors.muted,
-    marginTop: spacing.xl,
-    marginBottom: spacing.sm,
-  },
   analyzingText: { ...type.body, marginTop: spacing.md, color: colors.muted },
   textHeader: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginBottom: spacing.lg },
   textTitle: { fontSize: 20, fontWeight: "800", color: colors.ink, letterSpacing: -0.3 },

@@ -1,18 +1,48 @@
-import React from "react";
-import { StyleSheet, View } from "react-native";
+import React, { useContext, useEffect, useRef } from "react";
+import { Animated, Easing, Platform, StyleSheet, View } from "react-native";
+import { NavigationContext, NavigationRouteContext } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, gradients } from "../theme/theme";
+import useReducedMotion from "../hooks/useReducedMotion";
+
+const AnimatedSafeAreaView = Animated.createAnimatedComponent(SafeAreaView);
+const TAB_SCREENS = new Set(["Home", "Calendar", "Todos", "Documents"]);
 
 export default function ScreenSurface({ children, style, ...props }) {
-  return <SafeAreaView {...props} style={[styles.root, style]}>
+  const navigation = useContext(NavigationContext);
+  const route = useContext(NavigationRouteContext);
+  const reducedMotion = useReducedMotion();
+  const progress = useRef(new Animated.Value(1)).current;
+  const shouldAnimate = !reducedMotion && (Platform.OS === "web" || TAB_SCREENS.has(route?.name));
+
+  useEffect(() => {
+    const finish = () => { progress.stopAnimation(); progress.setValue(1); };
+    const enter = () => {
+      if (!shouldAnimate) return finish();
+      progress.stopAnimation();
+      progress.setValue(0);
+      Animated.timing(progress, {
+        toValue: 1, duration: 260, easing: Easing.out(Easing.cubic), useNativeDriver: Platform.OS !== "web",
+      }).start();
+    };
+    if (!navigation || navigation.isFocused()) enter();
+    const offFocus = navigation?.addListener("focus", enter);
+    const offBlur = navigation?.addListener("blur", finish);
+    return () => { offFocus?.(); offBlur?.(); finish(); };
+  }, [navigation, progress, shouldAnimate]);
+
+  return <AnimatedSafeAreaView {...props} style={[styles.root, style, {
+    opacity: progress.interpolate({ inputRange: [0, 1], outputRange: [0.65, 1] }),
+    transform: [{ translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
+  }]}>
     <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={StyleSheet.absoluteFill}>
       <LinearGradient colors={gradients.page} locations={[0, 0.48, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
       <View style={styles.sweep} />
       <View style={styles.lowerLight} />
     </View>
     {children}
-  </SafeAreaView>;
+  </AnimatedSafeAreaView>;
 }
 
 const styles = StyleSheet.create({

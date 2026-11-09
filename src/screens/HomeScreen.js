@@ -6,6 +6,7 @@ import { useFocusEffect, useScrollToTop } from "@react-navigation/native";
 import { View, ScrollView, Pressable, StyleSheet, Modal, Alert, Platform, useWindowDimensions } from "react-native";
 import ScreenSurface from "../components/ScreenSurface";
 import { Ionicons } from "@expo/vector-icons";
+import AppHeader from "../components/AppHeader";
 import DocumentHero from "../components/DocumentHero";
 import GlassTint from "../components/GlassTint";
 import Card from "../components/Card";
@@ -37,6 +38,8 @@ export default function HomeScreen({ navigation, route }) {
   const [documents, setDocuments] = useState([]);
   const [sortBy, setSortBy] = useState("dday");
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const initialLoading = loading && !hasLoaded;
   const [error, setError] = useState("");
   const [busyTaskId, setBusyTaskId] = useState(null);
   const [openingId, setOpeningId] = useState(null);
@@ -60,6 +63,7 @@ export default function HomeScreen({ navigation, route }) {
     Promise.all([listDocuments(), isDocumentsScreen ? Promise.resolve([]) : listTodos()]).then(([docs, todos]) => {
       if (!active) return;
       setDocuments(docs);
+      setHasLoaded(true);
       setTasks(todos.filter((item) => item.date === localPlanDate()));
     }).catch((e) => { if (active) setError(e.message); })
       .finally(() => { if (active) setLoading(false); });
@@ -203,11 +207,11 @@ export default function HomeScreen({ navigation, route }) {
   const visibleDocuments = documents
     .filter((item) => matchesQuery(item, query))
     .filter((item) => docFilter === "all" || documentStatus(item) === docFilter);
-  const noDocuments = !loading && !error && documents.length === 0;
+  const noDocuments = !initialLoading && !error && documents.length === 0;
 
   const sortedUpcoming = upcomingDocuments(documents, sortBy);
   const previewUpcoming = upcomingDocuments(documents).slice(0, 3);
-  const emptyLabel = loading ? "불러오는 중…" : error ? "문서를 불러오지 못했어요."
+  const emptyLabel = initialLoading ? "불러오는 중…" : error ? "문서를 불러오지 못했어요."
     : isDocumentsScreen ? (query.trim() ? `‘${query.trim()}’에 맞는 문서가 없어요.` : "이 조건에 맞는 문서가 없어요.")
     : "다가오는 마감이 없습니다.";
   const renderDocumentCard = (list) => (
@@ -275,25 +279,7 @@ export default function HomeScreen({ navigation, route }) {
 
   return (
     <ScreenSurface style={styles.safe} edges={["top"]}>
-      {/* 헤더 */}
-      <View style={styles.header}>
-        <GlassTint radius={16} />
-        <View style={styles.brandRow}>
-          <View style={styles.logoDot}>
-            <Ionicons name="document-text" size={18} color="#FFFFFF" />
-            <View style={styles.logoCheck}>
-              <Ionicons name="checkmark" size={9} color={colors.stamp} />
-            </View>
-          </View>
-          <Text style={styles.brand}>똑독</Text>
-        </View>
-        <View style={styles.headerIcons}>
-          <Pressable hitSlop={8} accessibilityRole="button" accessibilityLabel="알림함"
-            onPress={() => navigation.navigate("Notifications")} style={styles.notificationButton}>
-            <Ionicons name="notifications-outline" size={22} color={colors.ink} />
-          </Pressable>
-        </View>
-      </View>
+      <AppHeader />
 
       <ScrollView ref={scroll} style={styles.scroll} contentContainerStyle={styles.container}>
         {!!error && <Text accessibilityRole="alert" style={[type.small, { color: colors.alert, marginBottom: spacing.md }]}>{error}</Text>}
@@ -303,7 +289,7 @@ export default function HomeScreen({ navigation, route }) {
         {noDocuments && isDocumentsScreen ? <EmptyStart /> : isDocumentsScreen ? <>
           <View style={styles.sectionHeaderRow}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>내 문서</Text>
-            <Text style={type.small}>{loading ? "불러오는 중…" : `${documents.length}개`}</Text>
+            <Text style={type.small}>{initialLoading ? "불러오는 중…" : `${documents.length}개`}</Text>
           </View>
           <View style={styles.searchBox}>
             <Ionicons name="search" size={18} color={colors.muted} />
@@ -342,33 +328,19 @@ export default function HomeScreen({ navigation, route }) {
               <GlassTint radius={22} />
               <View style={[styles.statIcon, !wide && { width: 36, height: 40 }]}><Ionicons name={item.icon} color={colors.stamp} size={26} /></View>
               <View style={{ flex: 1 }}><Text numberOfLines={1} style={styles.statLabel}>{item.label}</Text>
-                <Text style={styles.statValue}>{loading ? "—" : item.value}</Text></View>
+                <Text style={styles.statValue}>{initialLoading ? "—" : item.value}</Text></View>
               {wide && <Ionicons name="chevron-forward" color={colors.muted} size={16} />}
             </Pressable>
           ))}
         </View>
         <DocumentHero onPress={() => navigation.navigate("DocumentAdd")} />
-        <View style={[styles.dashboard, wide && { flexDirection: "row" }]}>
-          <View style={{ flex: wide ? 1.25 : undefined, minWidth: 0 }}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>다가오는 마감</Text>
-              <Pressable accessibilityRole="button" onPress={() => setTab(tab === "upcoming" ? "today" : "upcoming")} hitSlop={8}>
-                <Text style={styles.seeAll}>{tab === "upcoming" ? "간략히 보기" : "전체 보기"} ›</Text>
-              </Pressable>
-            </View>
-            {tab === "upcoming" && <Pressable accessibilityRole="button" style={styles.sortToggle}
-              onPress={() => setSortBy((prev) => prev === "dday" ? "recent" : "dday")}>
-              <Ionicons name="swap-vertical" size={14} color={colors.muted} />
-              <Text style={styles.sortToggleText}>{sortBy === "dday" ? "마감임박순" : "최신순"}</Text>
-            </Pressable>}
-            {noDocuments ? <EmptyStart /> : renderDocumentCard(tab === "upcoming" ? sortedUpcoming : previewUpcoming)}
-          </View>
-          <View style={{ flex: wide ? 1 : undefined, minWidth: 0 }}>
+        <View style={styles.dashboard}>
+          <View style={{ minWidth: 0 }}>
             <Text style={styles.sectionTitle}>오늘 할 일</Text>
             <Card style={{ minHeight: 202 }}>
               {tasks.length === 0 && <View style={styles.emptyToday}>
                 <View style={styles.emptyIcon}><Ionicons name="checkmark" size={30} color={colors.stamp} /></View>
-                <Text style={[type.body, { textAlign: "center" }]}>{loading ? "불러오는 중…" : "오늘 등록된 할 일이 없어요"}</Text>
+                <Text style={[type.body, { textAlign: "center" }]}>{initialLoading ? "불러오는 중…" : "오늘 등록된 할 일이 없어요"}</Text>
                 <Text style={[type.small, { textAlign: "center" }]}>다가오는 마감을 미리 확인해 보세요.</Text>
               </View>}
               {tasks.map((item, idx) => <Pressable key={item.id}
@@ -382,6 +354,20 @@ export default function HomeScreen({ navigation, route }) {
                 <Text style={styles.taskDday}>{ddayLabel(documents.find(d => d.id === item.document_id)?.dday)}</Text>
               </Pressable>)}
             </Card>
+          </View>
+          <View style={{ minWidth: 0 }}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>다가오는 마감</Text>
+              <Pressable accessibilityRole="button" onPress={() => setTab(tab === "upcoming" ? "today" : "upcoming")} hitSlop={8}>
+                <Text style={styles.seeAll}>{tab === "upcoming" ? "간략히 보기" : "전체 보기"} ›</Text>
+              </Pressable>
+            </View>
+            {tab === "upcoming" && <Pressable accessibilityRole="button" style={styles.sortToggle}
+              onPress={() => setSortBy((prev) => prev === "dday" ? "recent" : "dday")}>
+              <Ionicons name="swap-vertical" size={14} color={colors.muted} />
+              <Text style={styles.sortToggleText}>{sortBy === "dday" ? "마감임박순" : "최신순"}</Text>
+            </Pressable>}
+            {noDocuments ? <EmptyStart /> : renderDocumentCard(tab === "upcoming" ? sortedUpcoming : previewUpcoming)}
           </View>
         </View>
         </>}
@@ -481,40 +467,6 @@ const styles = StyleSheet.create({
   emptyToday: { alignItems: "center", justifyContent: "center", flex: 1, paddingVertical: 12, gap: 12 },
   emptyIcon: { width: 56, height: 56, backgroundColor: colors.stampSoft, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   safe: { flex: 1, backgroundColor: colors.paper },
-  notificationButton: { backgroundColor: "rgba(233,243,255,0.48)", borderWidth: 1, borderColor: "rgba(246,251,255,0.7)", padding: 8, borderRadius: 14 },
-  header: { ...glass, borderRadius: 16, width: "100%", maxWidth: 1120, alignSelf: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: spacing.lg,
-    paddingTop: 20,
-    paddingBottom: 20,
-    borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,.7)",
-  },
-  brandRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  headerIcons: { flexDirection: "row", alignItems: "center", gap: spacing.lg },
-  logoDot: {
-    width: 34,
-    height: 36,
-    borderRadius: radius.sm,
-    backgroundColor: colors.stamp,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoCheck: {
-  position: "absolute",
-  right: -4,
-  bottom: -4,
-  width: 14,
-  height: 14,
-  borderRadius: 7,
-  backgroundColor: "#FFFFFF",
-  borderWidth: 1.5,
-  borderColor: colors.stamp,
-  alignItems: "center",
-  justifyContent: "center",
-},
-  brand: { ...type.h1 },
   scroll: { flex: 1 },
   searchBox: {
     flexDirection: "row", alignItems: "center", gap: spacing.sm,
