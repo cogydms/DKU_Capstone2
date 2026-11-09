@@ -62,6 +62,7 @@ _ROLE_NAME = {
 }
 _ACTION_WORDS = {"발급", "작성", "제출", "준비", "확인", "신청", "업로드", "출력", "서명", "방문", "등록", "최종", "완료", "하기"}
 _PARTICLE_TAIL = re.compile(r"(에서|으로|로|을|를|이|가|은|는|의|에)$")
+_EXCLUSION_ROLE = re.compile(r"제외|불가|할\s*수\s*없|자격\s*(?:이\s*)?없")
 
 
 @dataclass
@@ -237,6 +238,9 @@ class Verifier:
                              detail="원문에서 근거를 찾지 못했습니다 (AI가 만들어낸 정보일 수 있음)")
 
         value_checks = self._check_date(f, loc.text) if f.key in DATE_KEYS else self._check_text(f, loc.text)
+        if f.key == FieldKey.APPLICANT_EXCLUSION and not _EXCLUSION_ROLE.search(loc.text):
+            value_checks.append(Check(name="exclusion_role", passed=False, score=0.0,
+                                      detail="근거 문장에서 신청 불가 또는 제외 조건을 확인하지 못했습니다"))
         val_score = sum(c.score for c in value_checks) / len(value_checks)
         conf = W_EVIDENCE * ev_score + W_VALUE * val_score + W_LLM * f.confidence
         hard_fail = any(not c.passed and c.score <= 0.3 for c in value_checks)

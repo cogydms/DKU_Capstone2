@@ -11,6 +11,7 @@ import Card from "../components/Card";
 import { colors, spacing, type } from "../theme/theme";
 import { getUpcomingReminders, isNotificationEnabled, notificationsSupported, permissionStatus } from "../services/notifications";
 import { onDataChanged } from "../services/dataEvents";
+import { notificationRoute } from "../navigation/routes";
 
 const pad = (n) => String(n).padStart(2, "0");
 const dayKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -64,11 +65,8 @@ export default function NotificationsScreen({ navigation }) {
   }
 
   const open = (item) => {
-    if (item.data?.documentId) {
-      navigation.navigate("Management", { documentId: item.data.documentId, documentTitle: item.data.documentTitle });
-    } else {
-      navigation.navigate("Tabs", { screen: "Todos" });
-    }
+    const target = notificationRoute(item.data);
+    if (target) navigation.navigate(target.name, target.params);
   };
 
   return (

@@ -31,10 +31,15 @@ EXTRACTION_SYSTEM_PROMPT = """\
    "9월 15일 ~ 9월 25일" 같은 기간이면 시작은 application_start, 끝은 deadline 이다.
 4. normalized_datetime 은 날짜 필드에만 넣는다. 연도가 없으면 문서의 다른 날짜나 오늘 날짜({today})로 추론한다.
    시간이 원문에 없으면 날짜만(YYYY-MM-DD) 쓴다. 원문에 없는 시간을 만들지 않는다.
-5. applicant_criteria, required_document 는 **한 필드에 한 항목**씩 나눈다. (서류 3개면 필드 3개)
+5. 신청 가능 대상은 applicant_criteria, 신청 불가·제외 대상은 applicant_exclusion으로 구분한다.
+   자격과 제외 조건의 범위를 보존한다. 같은 조건에 속하는 학과 목록과 '또는', '중', '제외' 같은 표현을 임의로 떼지 않는다.
+   제외 항목의 value에는 제외되는 대상을, evidence_quote에는 제외임을 보여 주는 제목 또는 문장을 포함한다.
+   마감 이후 접수 불가 같은 일정 안내는 신청 불가 대상으로 분류하지 않는다.
+   required_document는 서류 한 가지당 한 필드로 나눈다.
 6. todo 는 사용자가 실제로 해야 할 행동을 짧은 동사구로 쓴다. 예: "성적증명서 발급", "신청서 작성", "학생포털에서 서류 제출".
    행동을 유추한 근거 문장을 evidence_quote 에 넣는다. 준비 순서대로 나열한다.
 7. confidence 는 0.0~1.0. 원문에 명시되어 있으면 높게, 해석이 필요하면 낮게.
+8. contact에는 문의처의 이메일 주소가 있으면 별도 항목으로 원문 그대로 추출한다.
 """
 
 
