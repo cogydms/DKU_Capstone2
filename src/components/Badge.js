@@ -1,5 +1,6 @@
+import { Text } from "./Typography";
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { colors, radius, spacing } from "../theme/theme";
 
 const TONES = {
@@ -10,10 +11,10 @@ const TONES = {
   neutral: { bg: colors.line, fg: colors.muted },
 };
 
-export default function Badge({ label, tone = "neutral" }) {
+export default function Badge({ label, tone = "neutral", style }) {
   const t = TONES[tone] || TONES.neutral;
   return (
-    <View style={[styles.badge, { backgroundColor: t.bg }]}>
+    <View style={[styles.badge, { backgroundColor: t.bg }, style]}>
       <Text style={[styles.text, { color: t.fg }]}>{label}</Text>
     </View>
   );

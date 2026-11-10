@@ -1,7 +1,8 @@
+import { Text } from "./Typography";
 // 담당자 1 (공통 컴포넌트) 소유
 // 근거 검증 신뢰도를 시각화. 90%+ 확인, 70~89% 주의, 70% 미만 "사용자 확인 필요".
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { colors, confidenceColor, spacing } from "../theme/theme";
 
 export default function ConfidenceBar({ label, pct }) {

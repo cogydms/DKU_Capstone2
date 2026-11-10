@@ -1,32 +1,30 @@
+import { pageContent } from "../theme/theme";
+import { Text } from "../components/Typography";
 // 담당자 3 (원문 근거 확인 / 검증 흐름) 소유
 // 근거 검증 에이전트 결과를 원문 페이지 위에 형광펜으로 표시하고, '확인 필요' 항목을 사용자가 승인하거나 삭제한다.
 // - 텍스트 레이어가 있는 PDF: 백엔드가 렌더링한 실제 페이지 이미지 + 근거 위치 박스
 // - 그 외(텍스트 입력, 이미지, 스캔 PDF, 원본 없음): 원문 텍스트를 종이 모양으로 그리고 근거 문장에 형광펜
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  Pressable,
-  ActivityIndicator,
-  Alert,
-  Platform,
-  Image,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View, ScrollView, StyleSheet, Pressable, ActivityIndicator, Alert, Platform } from "react-native";
+import ScreenSurface from "../components/ScreenSurface";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import PrimaryButton from "../components/PrimaryButton";
-import { colors, spacing, radius } from "../theme/theme";
+import AuthenticatedPageImage from "../components/AuthenticatedPageImage";
+import EvidenceFieldEditModal from "../components/EvidenceFieldEditModal";
+import { colors, evidenceReviewColors, spacing, radius } from "../theme/theme";
 import { analysisDetail as mockDetail, evidenceSource as mockSource } from "../data/mockData";
-import { confirmField, rejectField, getSource, pageImageUrl } from "../services/api";
+import { confirmField, rejectField, getSource } from "../services/api";
+import { backOrHome } from "../navigation/routes";
+import { needsEvidenceReview } from "../utils/evidenceReview";
 
 // ─────────────────────────── 화면 상수 ───────────────────────────
 const UI = {
-  soft: "#F1F4F9", // 요약 카드 · 페이지 번호 · 안내 띠 배경
-  viewerBg: "#F3F5F8", // 페이지 뷰어 바탕
-  hl: "rgba(255, 214, 10, 0.42)", // 선택한 항목 형광펜
-  hlDim: "rgba(255, 226, 110, 0.22)", // '전체' 탭에서 나머지 항목
+  soft: "#D7E4F6", // 요약 카드 · 페이지 번호 · 안내 띠 배경
+  viewerBg: "#C8D9EF", // 페이지 뷰어 바탕
+  hl: "rgba(255, 194, 0, 0.68)", // 선택한 항목 형광펜
+  hlDim: "rgba(255, 204, 38, 0.40)", // '전체' 탭에서 나머지 항목
+  reviewHl: "rgba(244, 63, 76, 0.48)",
+  reviewHlDim: "rgba(244, 63, 76, 0.28)",
   arrow: "rgba(55, 60, 70, 0.55)",
 };
 const VIEWER_HEIGHT = 340;
@@ -39,6 +37,7 @@ const GROUPS = [
   { key: "period", title: "신청 기간", keys: ["application_start", "deadline"] },
   { key: "documents", title: "제출 서류", keys: ["required_document"] },
   { key: "criteria", title: "신청 대상", keys: ["applicant_criteria"] },
+  { key: "exclusions", title: "신청 불가 대상", keys: ["applicant_exclusion"] },
   { key: "method", title: "제출 방법", keys: ["submission_method"] },
   { key: "announcement", title: "결과 발표", keys: ["announcement_date"] },
   { key: "event", title: "행사 일정", keys: ["event_date"] },
@@ -47,18 +46,16 @@ const GROUPS = [
   { key: "contact", title: "문의처", keys: ["contact"] },
 ];
 
-const NEEDS_ACTION = (s) => s === "needs_review" || s === "unverified";
-
 function showError(message) {
   if (Platform.OS === "web") window.alert(message);
   else Alert.alert("처리하지 못했어요", message);
 }
 
 function confidenceTone(item) {
-  if (item.status === "unverified") return { fg: colors.alert, label: "근거 없음" };
-  if (item.confidence >= 90) return { fg: colors.green, label: `신뢰도 ${item.confidence}%` };
-  if (item.confidence >= 80) return { fg: colors.stamp, label: `신뢰도 ${item.confidence}%` };
-  return { fg: "#C2410C", label: `확인 필요 ${item.confidence}%` };
+  if (item.status === "unverified") return { fg: evidenceReviewColors.ink, label: "근거 없음" };
+  if (item.status === "needs_review") return { fg: evidenceReviewColors.ink, label: `확인 필요 ${item.confidence}%` };
+  if (item.status === "user_confirmed") return { fg: colors.green, label: "직접 확인함" };
+  return { fg: item.confidence >= 90 ? colors.green : colors.stamp, label: `신뢰도 ${item.confidence}%` };
 }
 
 // ─────────────────────────── 데이터 가공 ───────────────────────────
@@ -98,7 +95,7 @@ function buildItems(fields, view) {
     items.forEach((it) => {
       it.confidence = Math.min(...it.fields.map((f) => f.confidence));
       const weakest = it.fields.find((f) => f.status === "unverified") ?? it.fields.find((f) => f.status === "needs_review");
-      it.status = weakest?.status ?? it.fields[0].status;
+      it.status = weakest?.status ?? (it.fields.every((f) => f.status === "user_confirmed") ? "user_confirmed" : "verified");
     });
     byGroup[g.key] = items;
   });
@@ -146,6 +143,13 @@ function textRanges(fields, pages) {
 }
 
 // ─────────────────────────── 페이지 그리기 ───────────────────────────
+const highlightPriority = (entry, focusIds) => focusIds.includes(entry.id) ? 2 : entry.review ? 1 : 0;
+
+function highlightColor(entry, focusIds) {
+  const focused = focusIds.includes(entry.id);
+  return entry.review ? (focused ? UI.reviewHl : UI.reviewHlDim) : (focused ? UI.hl : UI.hlDim);
+}
+
 // 텍스트 페이지: 줄 단위로 나누고, 하이라이트 구간과 겹치는 부분만 배경색을 칠한다.
 function TextPage({ text, ranges, focusIds, showAll, scale = 1, onLineLayout, tiny }) {
   const lines = [];
@@ -154,7 +158,8 @@ function TextPage({ text, ranges, focusIds, showAll, scale = 1, onLineLayout, ti
     lines.push({ text: line, start: pos, end: pos + line.length });
     pos += line.length + 1;
   });
-  const visible = ranges.filter((r) => showAll || focusIds.includes(r.id));
+  const visible = ranges.filter((r) => showAll || focusIds.includes(r.id))
+    .sort((a, b) => highlightPriority(b, focusIds) - highlightPriority(a, focusIds));
 
   const fs = tiny ? 3.4 : 13 * scale;
   const lh = tiny ? 4.8 : 22 * scale;
@@ -182,7 +187,7 @@ function TextPage({ text, ranges, focusIds, showAll, scale = 1, onLineLayout, ti
             {pts.slice(0, -1).map((a, k) => {
               const b = pts[k + 1];
               const hit = visible.find((r) => r.start < b && r.end > a);
-              const bg = hit ? (focusIds.includes(hit.id) ? UI.hl : UI.hlDim) : undefined;
+              const bg = hit && highlightColor(hit, focusIds);
               return (
                 <Text key={k} style={bg ? { backgroundColor: bg } : null}>
                   {text.slice(a, b)}
@@ -198,8 +203,15 @@ function TextPage({ text, ranges, focusIds, showAll, scale = 1, onLineLayout, ti
 
 // 이미지 페이지 위 하이라이트 박스
 function Boxes({ boxes, focusIds, showAll, width, height }) {
-  return boxes
-    .filter((b) => showAll || focusIds.includes(b.id))
+  const visible = boxes.filter((b) => showAll || focusIds.includes(b.id));
+  const byRect = new Map();
+  for (const box of visible) {
+    const key = box.rect.join(",");
+    const current = byRect.get(key);
+    if (!current || highlightPriority(box, focusIds) > highlightPriority(current, focusIds)) byRect.set(key, box);
+  }
+  return [...byRect.values()]
+    .sort((a, b) => highlightPriority(a, focusIds) - highlightPriority(b, focusIds))
     .map((b, i) => (
       <View
         key={`${b.id}-${i}`}
@@ -210,7 +222,7 @@ function Boxes({ boxes, focusIds, showAll, width, height }) {
           top: b.rect[1] * height,
           width: b.rect[2] * width,
           height: b.rect[3] * height,
-          backgroundColor: focusIds.includes(b.id) ? UI.hl : UI.hlDim,
+          backgroundColor: highlightColor(b, focusIds),
           borderRadius: 2,
         }}
       />
@@ -228,9 +240,17 @@ export default function EvidenceCheckScreen({ navigation, route }) {
   const [source, setSource] = useState(isMock ? { kind: "text", pages: mockSource.pages, highlights: {} } : null);
   const [loadError, setLoadError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [editingFields, setEditingFields] = useState(null);
+  const updating = useRef(false);
 
+  const fields = analysis?.fields ?? [];
+  const byGroup = useMemo(() => buildItems(fields, view), [fields, view]);
+  const allItems = useMemo(() => GROUPS.flatMap((g) => byGroup[g.key] ?? []), [byGroup]);
   const [tab, setTab] = useState("all");
-  const [itemIdx, setItemIdx] = useState(0);
+  const [focusedFieldId, setFocusedFieldId] = useState(params.focusFieldId);
+  const [itemIdx, setItemIdx] = useState(() => Math.max(0,
+    allItems.findIndex((item) => item.fields.some((field) => field.id === params.focusFieldId))
+  ));
   const [page, setPage] = useState(1);
   const [zoomIdx, setZoomIdx] = useState(0);
   const [areaW, setAreaW] = useState(0);
@@ -261,12 +281,16 @@ export default function EvidenceCheckScreen({ navigation, route }) {
   const pageCount = imageMode ? source.pageImages.length : source?.pages?.length ?? 0;
   useEffect(() => setZoomIdx(imageMode ? 1 : 0), [imageMode]);
 
-  const fields = analysis?.fields ?? [];
-  const byGroup = useMemo(() => buildItems(fields, view), [fields, view]);
   const tabs = [{ key: "all", title: "전체" }, ...GROUPS.filter((g) => byGroup[g.key])];
-  const items = tab === "all" ? GROUPS.flatMap((g) => byGroup[g.key] ?? []) : byGroup[tab] ?? [];
-  const item = items[Math.min(itemIdx, Math.max(items.length - 1, 0))];
-  const focusIds = item ? item.fields.map((f) => f.id) : [];
+  const items = tab === "all" ? allItems : byGroup[tab] ?? [];
+  const index = Math.min(itemIdx, Math.max(items.length - 1, 0));
+  const item = items[index];
+  // 기간처럼 두 필드가 묶인 항목에서도, 분석 화면에서 누른 필드만 보여 준다.
+  const focusedField = item?.fields.find((f) => f.id === focusedFieldId);
+  const selectedFields = focusedField ? [focusedField] : item?.fields ?? [];
+  const focusIds = selectedFields.map((f) => f.id);
+  const reviewIds = new Set(fields.filter((f) => needsEvidenceReview(f.status)).map((f) => f.id));
+  const selectItem = (nextIndex) => { setFocusedFieldId(null); setItemIdx(nextIndex); };
 
   // 페이지별 하이라이트
   const ranges = useMemo(
@@ -280,17 +304,16 @@ export default function EvidenceCheckScreen({ navigation, route }) {
   const boxesOn = (p) =>
     shownIds.flatMap((id) => {
       const h = source?.highlights?.[id];
-      return h && h.page === p ? h.rects.map((rect) => ({ id, rect })) : [];
+      return h && h.page === p ? h.rects.map((rect) => ({ id, rect, review: reviewIds.has(id) })) : [];
     });
   const rangesOn = (p) =>
-    shownIds.map((id) => ranges[id] && ranges[id].page === p && { id, ...ranges[id] }).filter(Boolean);
+    shownIds.map((id) => ranges[id] && ranges[id].page === p && { id, ...ranges[id], review: reviewIds.has(id) }).filter(Boolean);
 
   // 항목을 고르면 그 근거가 있는 페이지로 이동
+  const targetPage = focusIds.map(pageOf).find((p) => p > 0 && p <= pageCount);
   useEffect(() => {
-    if (!item || !pageCount) return;
-    const p = item.fields.map((f) => pageOf(f.id)).find(Boolean);
-    if (p && p <= pageCount) setPage(p);
-  }, [item?.id, pageCount]);
+    if (targetPage) setPage(targetPage);
+  }, [item?.id, focusedField?.id, targetPage]);
 
   const zoom = ZOOMS[zoomIdx];
   const paperW = Math.max(areaW - 24, 0) * zoom;
@@ -324,43 +347,60 @@ export default function EvidenceCheckScreen({ navigation, route }) {
   useEffect(() => {
     const t = setTimeout(scrollToFocus, 120);
     return () => clearTimeout(t);
-  }, [item?.id, page, zoomIdx, areaW, source]);
+  }, [item?.id, focusedField?.id, page, zoomIdx, areaW, source]);
 
-  // 확인 필요 항목 승인/삭제
-  const act = async (fn) => {
+  const updateFields = async (fieldIds, update) => {
+    if (updating.current) return false;
+    updating.current = true;
     setBusy(true);
     try {
-      let res;
-      for (const f of item.fields.filter((x) => NEEDS_ACTION(x.status))) {
-        res = await fn(documentId, f.id);
+      for (const fieldId of fieldIds) {
+        const result = await update(documentId, fieldId);
+        setView(result.view);
+        setAnalysis(result.analysis);
       }
-      if (res) {
-        setView(res.view);
-        setAnalysis(res.analysis);
-      }
-    } catch (e) {
-      showError(e.message);
+      return true;
     } finally {
+      updating.current = false;
       setBusy(false);
     }
   };
 
+  const reviewFields = selectedFields.filter((field) => needsEvidenceReview(field.status));
+  const act = async (update) => {
+    try {
+      await updateFields(reviewFields.map((field) => field.id), update);
+    } catch (e) {
+      showError(e.message);
+    }
+  };
+  const saveEdit = async (fieldId, patch) => {
+    const saved = await updateFields([fieldId], (id, fid) => confirmField(id, fid, patch));
+    if (saved) setEditingFields(null);
+  };
+
   const goPage = (p) => setPage(Math.min(Math.max(p, 1), pageCount));
-  const tone = item ? confidenceTone(item) : null;
-  const needsAction = item && item.fields.some((f) => NEEDS_ACTION(f.status));
-  const failedChecks = item ? item.fields.flatMap((f) => (f.checks ?? []).filter((c) => !c.passed)) : [];
-  const notOnPage = item && item.fields.every((f) => !locate(f.id));
-  const reviewCount = fields.filter((f) => NEEDS_ACTION(f.status)).length;
+  const summaryItem = focusedField ?? item;
+  const tone = summaryItem ? confidenceTone(summaryItem) : null;
+  const needsAction = needsEvidenceReview(summaryItem?.status);
+  const showActions = needsAction && !isMock;
+  const canEdit = !isMock && !params.planRegistered;
+  const confirmedFields = selectedFields.filter((field) => field.status === "user_confirmed");
+  const showConfirmedEdit = canEdit && confirmedFields.length > 0;
+  const failedChecks = selectedFields.flatMap((f) => (f.checks ?? []).filter((c) => !c.passed));
+  const missingField = selectedFields.find((f) => f.status === "unverified");
+  const notOnPage = source && item && selectedFields.every((f) => !locate(f.id));
+  const reviewCount = reviewIds.size;
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+    <ScreenSurface style={styles.safe} edges={["top", "bottom"]}>
       {/* 헤더 */}
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="뒤로가기"
           hitSlop={8}
-          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.replace("Home"))}
+          onPress={() => (backOrHome(navigation))}
           style={styles.headerSide}
         >
           <Ionicons name="chevron-back" size={24} color={colors.ink} />
@@ -377,9 +417,10 @@ export default function EvidenceCheckScreen({ navigation, route }) {
             return (
               <Pressable
                 key={t.key}
+                disabled={busy}
                 onPress={() => {
                   setTab(t.key);
-                  setItemIdx(0);
+                  selectItem(0);
                 }}
                 style={[styles.tab, on && styles.tabOn]}
               >
@@ -391,62 +432,72 @@ export default function EvidenceCheckScreen({ navigation, route }) {
 
         {/* 선택한 항목 요약 */}
         {item ? (
-          <View style={styles.summary}>
+          <View style={[styles.summary, needsAction && styles.summaryReview]}>
             <View style={styles.summaryTop}>
-              <Text style={styles.summaryTitle}>{item.title}</Text>
-              <Text style={[styles.summaryConf, { color: tone.fg }]}>{tone.label}</Text>
-            </View>
-            <Text style={styles.summaryValue}>{item.value}</Text>
-
-            {notOnPage && (
-              <Text style={styles.summaryNote}>
-                {item.status === "unverified"
-                  ? `원문에서 근거를 찾지 못했어요. AI가 제시한 근거: “${item.fields[0].evidence?.quote ?? ""}”`
-                  : "원문 페이지에서 정확한 위치를 찾지 못했어요."}
-              </Text>
-            )}
-            {needsAction &&
-              failedChecks.map((c, i) => (
-                <Text key={`${c.name}-${i}`} style={styles.reason}>
-                  · {c.detail}
-                </Text>
-              ))}
-            {needsAction && !isMock && (
-              <View style={styles.actions}>
-                {busy ? (
-                  <ActivityIndicator color={colors.stamp} />
-                ) : (
-                  <>
-                    <Pressable style={[styles.smallBtn, styles.rejectBtn]} onPress={() => act(rejectField)}>
-                      <Text style={[styles.smallBtnText, { color: colors.alert }]}>잘못됐어요, 삭제</Text>
-                    </Pressable>
-                    <Pressable style={[styles.smallBtn, styles.confirmBtn]} onPress={() => act(confirmField)}>
-                      <Text style={[styles.smallBtnText, { color: "#fff" }]}>맞아요</Text>
-                    </Pressable>
-                  </>
+              <Text style={styles.summaryTitle} numberOfLines={1}>{focusedField?.label ?? item.title}</Text>
+              <Text style={[styles.summaryConf, { color: tone.fg }]}>
+                {tone.label}
+                {showConfirmedEdit && summaryItem.status !== "user_confirmed" && (
+                  <Text style={{ color: colors.green }}> · 직접 확인함 {confirmedFields.length}개</Text>
                 )}
-              </View>
-            )}
-
-            {items.length > 1 && (
-              <View style={styles.itemPager}>
-                <Pressable hitSlop={8} disabled={itemIdx === 0} onPress={() => setItemIdx(itemIdx - 1)}>
-                  <Ionicons name="chevron-back" size={16} color={itemIdx === 0 ? colors.line : colors.muted} />
+              </Text>
+            </View>
+            <View style={styles.summaryBody}>
+              <ScrollView key={summaryItem.id} nestedScrollEnabled style={styles.summaryDetails}>
+                <Text style={styles.summaryValue}>{summaryItem.value}</Text>
+                {(missingField || notOnPage) && (
+                  <Text style={styles.summaryNote}>
+                    {missingField ? "원문에서 근거를 찾지 못했어요." : "원문 페이지에서 정확한 위치를 찾지 못했어요."}
+                    {missingField?.evidence?.quote ? ` AI가 제시한 근거: “${missingField.evidence.quote}”` : ""}
+                  </Text>
+                )}
+                {needsAction && failedChecks.map((c, i) => (
+                  <Text key={`${c.name}-${i}`} style={styles.reason}>
+                    · {c.detail}
+                  </Text>
+                ))}
+              </ScrollView>
+              {showConfirmedEdit && (
+                <Pressable accessibilityRole="button" disabled={busy}
+                  style={[styles.smallBtn, styles.editBtn, styles.confirmedEdit]}
+                  onPress={() => setEditingFields(confirmedFields)}>
+                  <Text style={[styles.smallBtnText, { color: colors.stamp }]}>수정하기</Text>
                 </Pressable>
-                <Text style={styles.itemPagerText}>
-                  {itemIdx + 1} / {items.length}
-                </Text>
-                <Pressable
-                  hitSlop={8}
-                  disabled={itemIdx >= items.length - 1}
-                  onPress={() => setItemIdx(itemIdx + 1)}
-                >
-                  <Ionicons
-                    name="chevron-forward"
-                    size={16}
-                    color={itemIdx >= items.length - 1 ? colors.line : colors.muted}
-                  />
-                </Pressable>
+              )}
+            </View>
+            {(showActions || items.length > 1) && (
+              <View style={styles.summaryFooter}>
+                {showActions && (
+                  <View style={styles.actions}>
+                    {busy ? <ActivityIndicator color={colors.stamp} /> : <>
+                      <Pressable accessibilityRole="button" style={[styles.smallBtn, styles.rejectBtn]} onPress={() => act(rejectField)}>
+                        <Text style={[styles.smallBtnText, { color: evidenceReviewColors.ink }]}>잘못됐어요, 삭제</Text>
+                      </Pressable>
+                      {canEdit && (
+                        <Pressable accessibilityRole="button" style={[styles.smallBtn, styles.editBtn]}
+                          onPress={() => setEditingFields(reviewFields)}>
+                          <Text style={[styles.smallBtnText, { color: colors.stamp }]}>직접 수정</Text>
+                        </Pressable>
+                      )}
+                      <Pressable accessibilityRole="button" style={[styles.smallBtn, styles.confirmBtn]} onPress={() => act(confirmField)}>
+                        <Text style={[styles.smallBtnText, { color: "#fff" }]}>맞아요</Text>
+                      </Pressable>
+                    </>}
+                  </View>
+                )}
+                {items.length > 1 && (
+                  <View style={styles.itemPager}>
+                    <Pressable accessibilityRole="button" accessibilityLabel="이전 항목" style={styles.itemArrow}
+                      disabled={busy || index === 0} onPress={() => selectItem(index - 1)}>
+                      <Ionicons name="chevron-back" size={16} color={index === 0 ? colors.line : colors.muted} />
+                    </Pressable>
+                    <Text style={styles.itemPagerText}>{index + 1} / {items.length}</Text>
+                    <Pressable accessibilityRole="button" accessibilityLabel="다음 항목" style={styles.itemArrow}
+                      disabled={busy || index >= items.length - 1} onPress={() => selectItem(index + 1)}>
+                      <Ionicons name="chevron-forward" size={16} color={index >= items.length - 1 ? colors.line : colors.muted} />
+                    </Pressable>
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -513,8 +564,8 @@ export default function EvidenceCheckScreen({ navigation, route }) {
                 >
                   {imageMode ? (
                     <View style={[styles.paper, { width: paperW, height: paperH }]}>
-                      <Image
-                        source={{ uri: pageImageUrl(documentId, page, 1200) }}
+                      <AuthenticatedPageImage
+                        documentId={documentId} page={page} width={1200}
                         style={{ width: paperW, height: paperH }}
                         resizeMode="contain"
                       />
@@ -572,7 +623,7 @@ export default function EvidenceCheckScreen({ navigation, route }) {
                   <View style={[styles.thumb, on && styles.thumbOn]}>
                     {imageMode ? (
                       <View style={{ width: tw, height: th }}>
-                        <Image source={{ uri: pageImageUrl(documentId, p, 200) }} style={{ width: tw, height: th }} />
+                        <AuthenticatedPageImage documentId={documentId} page={p} width={200} style={{ width: tw, height: th }} />
                         <Boxes boxes={boxesOn(p)} focusIds={focusIds} showAll width={tw} height={th} />
                       </View>
                     ) : (
@@ -598,19 +649,24 @@ export default function EvidenceCheckScreen({ navigation, route }) {
         <PrimaryButton
           label={reviewCount ? `확인 필요 ${reviewCount}개는 그대로 두고 진행` : "확인했어요, 이대로 진행"}
           tone="stamp"
+          disabled={busy}
           onPress={() => navigation.navigate("ActionPlan", { documentId, view, analysis })}
         />
       </ScrollView>
-    </SafeAreaView>
+      {editingFields && (
+        <EvidenceFieldEditModal fields={editingFields} busy={busy} onSave={saveEdit}
+          onClose={() => setEditingFields(null)} />
+      )}
+    </ScreenSurface>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.surface },
-  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: spacing.sm, height: 48 },
+  header: { width: "100%", maxWidth: 1120, alignSelf: "center", flexDirection: "row", alignItems: "center", paddingHorizontal: spacing.sm, height: 48 },
   headerSide: { width: 44, height: 40, justifyContent: "center", paddingLeft: 4 },
   headerTitle: { flex: 1, textAlign: "center", fontSize: 18, fontWeight: "700", color: colors.ink },
-  container: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+  container: { ...pageContent, paddingHorizontal: spacing.lg, paddingBottom: 112 },
 
   tabs: { gap: spacing.sm, paddingVertical: spacing.md },
   tab: {
@@ -626,19 +682,26 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 14, fontWeight: "600", color: "#4A5568" },
   tabTextOn: { color: colors.stamp, fontWeight: "700" },
 
-  summary: { backgroundColor: UI.soft, borderRadius: 14, padding: spacing.lg, marginBottom: spacing.md },
-  summaryTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
-  summaryTitle: { fontSize: 16, fontWeight: "700", color: colors.ink },
+  summary: { height: 170, backgroundColor: UI.soft, borderRadius: 14, borderWidth: 1, borderColor: "transparent", padding: spacing.lg, marginBottom: spacing.md },
+  summaryReview: { backgroundColor: evidenceReviewColors.surface, borderColor: evidenceReviewColors.border },
+  summaryTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm, marginBottom: spacing.sm },
+  summaryTitle: { flexShrink: 1, fontSize: 16, fontWeight: "700", color: colors.ink },
   summaryConf: { fontSize: 12, fontWeight: "700" },
+  summaryBody: { flex: 1, minHeight: 0, flexDirection: "row", gap: spacing.sm },
+  summaryDetails: { flex: 1, minWidth: 0 },
+  confirmedEdit: { alignSelf: "flex-start" },
   summaryValue: { fontSize: 17, fontWeight: "700", color: colors.ink, lineHeight: 24 },
   summaryNote: { fontSize: 12, color: colors.muted, marginTop: spacing.sm, lineHeight: 17 },
-  reason: { fontSize: 12, color: colors.alert, marginTop: spacing.xs, lineHeight: 17 },
-  actions: { flexDirection: "row", justifyContent: "flex-end", gap: spacing.sm, marginTop: spacing.md },
-  smallBtn: { paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius: radius.sm },
+  reason: { fontSize: 12, color: evidenceReviewColors.ink, marginTop: spacing.xs, lineHeight: 17 },
+  summaryFooter: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.xs, marginTop: spacing.xs },
+  actions: { flexDirection: "row", alignItems: "center", gap: spacing.xs, minHeight: 36 },
+  smallBtn: { paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, borderRadius: radius.sm },
   confirmBtn: { backgroundColor: colors.stamp },
-  rejectBtn: { backgroundColor: colors.alertSoft },
+  rejectBtn: { backgroundColor: "#FFF3F4" },
+  editBtn: { backgroundColor: colors.surface },
   smallBtnText: { fontSize: 13, fontWeight: "700" },
-  itemPager: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 6, marginTop: spacing.sm },
+  itemPager: { flexDirection: "row", alignItems: "center", gap: spacing.xs, marginLeft: "auto" },
+  itemArrow: { width: 32, height: 36, alignItems: "center", justifyContent: "center" },
   itemPagerText: { fontSize: 12, color: colors.muted, fontWeight: "600" },
 
   viewer: {
@@ -658,7 +721,7 @@ const styles = StyleSheet.create({
   paper: {
     backgroundColor: "#fff",
     borderRadius: 2,
-    shadowColor: "#1F2E2B",
+    shadowColor: "#203D67",
     shadowOpacity: 0.1,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },

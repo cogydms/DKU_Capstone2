@@ -1,10 +1,11 @@
+import { glass } from "../theme/theme";
+import GlassTint from "../components/GlassTint";
+import { pageContent } from "../theme/theme";
+import { Text, TextInput } from "../components/Typography";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import {
-  View, Text, Pressable, StyleSheet, ActivityIndicator, TextInput, Alert, Platform,
-  KeyboardAvoidingView, ScrollView,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View, Pressable, StyleSheet, ActivityIndicator, Alert, Platform, KeyboardAvoidingView, ScrollView } from "react-native";
+import ScreenSurface from "../components/ScreenSurface";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
@@ -21,8 +22,6 @@ const INPUT_METHODS = [
     icon: "document-text", color: colors.alert, bg: colors.alertSoft },
   { id: "text", label: "텍스트 붙여넣기", desc: "복사한 공지 내용을 붙여넣어요",
     icon: "clipboard", color: colors.gold, bg: colors.goldSoft },
-  { id: "link", label: "링크 붙여넣기", icon: "link", soon: true },
-  { id: "email", label: "이메일 전달", icon: "mail", soon: true },
 ];
 
 // 백엔드 파이프라인 단계에 맞춘 로딩 문구 (실제 진행률이 아니라 대기 중 안내용)
@@ -50,13 +49,14 @@ function showError(message) {
 }
 
 function MethodRow({ m, onPress }) {
-  const off = m.soon || (m.mobileOnly && IS_WEB); // 준비 중이거나, 웹에서 못 쓰는 기능(카메라)
-  const desc = m.soon ? "준비 중이에요" : off ? "휴대폰 앱에서만 사용할 수 있어요" : m.desc;
+  const off = m.mobileOnly && IS_WEB;
+  const desc = off ? "휴대폰 앱에서만 사용할 수 있어요" : m.desc;
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.row, off && styles.rowSoon, pressed && styles.rowPressed]}
+      style={({ pressed }) => [styles.row, off && styles.rowUnavailable, pressed && styles.rowPressed]}
     >
+      {!off && <GlassTint radius={24} />}
       <View style={[styles.iconBox, { backgroundColor: off ? colors.line : m.bg }]}>
         <Ionicons name={m.icon} size={22} color={off ? colors.muted : m.color} />
       </View>
@@ -136,7 +136,6 @@ export default function DocumentAddScreen({ navigation }) {
   };
 
   const handlePick = (m) => {
-    if (m.soon) return showError(`${m.label}는 준비 중이에요. 지금은 사진·PDF·텍스트로 추가해 주세요.`);
     if (m.id === "camera") return pickCamera();
     if (m.id === "library") return pickLibrary();
     if (m.id === "pdf") return pickPdf();
@@ -145,10 +144,10 @@ export default function DocumentAddScreen({ navigation }) {
 
   if (analyzing) {
     return (
-      <SafeAreaView style={[styles.safe, styles.center]}>
+      <ScreenSurface style={[styles.safe, styles.center]}>
         <ActivityIndicator size="large" color={colors.stamp} />
         <Text style={styles.analyzingText}>{stageList[stage]}</Text>
-      </SafeAreaView>
+      </ScreenSurface>
     );
   }
 
@@ -156,7 +155,7 @@ export default function DocumentAddScreen({ navigation }) {
     const len = text.trim().length;
     const ready = len >= 10;
     return (
-      <SafeAreaView style={styles.safe} edges={["top"]}>
+      <ScreenSurface style={styles.safe} edges={["top"]}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
             {/* 상단: 아이콘 + 제목 */}
@@ -172,6 +171,7 @@ export default function DocumentAddScreen({ navigation }) {
 
             {/* 입력 카드 */}
             <View style={[styles.inputCard, focused && styles.inputCardFocused]}>
+              <GlassTint radius={24} />
               <TextInput
                 style={styles.input}
                 multiline
@@ -221,59 +221,53 @@ export default function DocumentAddScreen({ navigation }) {
             </Pressable>
           </ScrollView>
         </KeyboardAvoidingView>
-      </SafeAreaView>
+      </ScreenSurface>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <ScreenSurface style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={type.h1}>문서 추가하기</Text>
-        <Text style={styles.subtitle}>다양한 방법으로 문서를 공유할 수 있어요</Text>
+        <Text style={styles.subtitle}>사진·PDF·텍스트로 문서를 추가할 수 있어요</Text>
         {pendingDocumentId && <View style={{ marginBottom: spacing.lg }}>
           <PrimaryButton label="저장된 원문으로 다시 분석" tone="stamp"
             onPress={() => run(() => retryDocument(pendingDocumentId), { kind: "text" })} />
         </View>}
 
         <View style={styles.list}>
-          {INPUT_METHODS.filter((m) => !m.soon).map((m) => (
-            <MethodRow key={m.id} m={m} onPress={() => handlePick(m)} />
-          ))}
-        </View>
-
-        <Text style={styles.groupTitle}>다른 방법으로 추가하기</Text>
-        <View style={styles.list}>
-          {INPUT_METHODS.filter((m) => m.soon).map((m) => (
+          {INPUT_METHODS.map((m) => (
             <MethodRow key={m.id} m={m} onPress={() => handlePick(m)} />
           ))}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenSurface>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
   center: { alignItems: "center", justifyContent: "center" },
-  container: { padding: spacing.lg },
+  container: { ...pageContent, padding: spacing.lg },
   subtitle: { ...type.body, color: colors.muted, marginTop: 4, marginBottom: spacing.xl },
   list: { gap: spacing.sm },
   row: {
+    ...glass,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
     padding: spacing.md,
-    backgroundColor: colors.surface,
+    backgroundColor: glass.backgroundColor,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.line,
-    shadowColor: "#1F2E2B",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
+    borderColor: glass.borderColor,
+    shadowColor: "#203D67",
+    shadowOpacity: glass.shadowOpacity,
+    shadowRadius: glass.shadowRadius,
+    shadowOffset: glass.shadowOffset,
     elevation: 1,
   },
-  rowSoon: { backgroundColor: colors.paper, shadowOpacity: 0, elevation: 0 },
+  rowUnavailable: { backgroundColor: colors.paper, shadowOpacity: 0, elevation: 0 },
   rowPressed: { opacity: 0.7, transform: [{ scale: 0.98 }] },
   iconBox: {
     width: 44,
@@ -284,28 +278,22 @@ const styles = StyleSheet.create({
   },
   rowText: { flex: 1, gap: 2 },
   rowLabel: { fontSize: 16, fontWeight: "700", color: colors.ink },
-  rowDesc: { fontSize: 13, color: "#5B6475" },
-  groupTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: colors.muted,
-    marginTop: spacing.xl,
-    marginBottom: spacing.sm,
-  },
+  rowDesc: { fontSize: 13, color: "#465E7C" },
   analyzingText: { ...type.body, marginTop: spacing.md, color: colors.muted },
   textHeader: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginBottom: spacing.lg },
   textTitle: { fontSize: 20, fontWeight: "800", color: colors.ink, letterSpacing: -0.3 },
   inputCard: {
-    backgroundColor: colors.surface,
+    ...glass,
+    backgroundColor: glass.backgroundColor,
     borderRadius: radius.lg,
     borderWidth: 1.5,
-    borderColor: colors.line,
+    borderColor: glass.borderColor,
     padding: spacing.md,
     marginBottom: spacing.md,
-    shadowColor: "#1F2E2B",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
+    shadowColor: "#203D67",
+    shadowOpacity: glass.shadowOpacity,
+    shadowRadius: glass.shadowRadius,
+    shadowOffset: glass.shadowOffset,
     elevation: 1,
   },
   inputCardFocused: { borderColor: colors.stamp },

@@ -1,14 +1,18 @@
+import { pageContent } from "../theme/theme";
+import { Text } from "../components/Typography";
 // 캘린더: 저장된 문서 마감일과 준비 계획 할 일을 달력에 표시하고, 날짜를 누르면 그날의 마감·할 일을 보여준다.
 import React, { useCallback, useMemo, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View, ScrollView, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import AppHeader from "../components/AppHeader";
+import ScreenSurface from "../components/ScreenSurface";
 import { Ionicons } from "@expo/vector-icons";
 import Card from "../components/Card";
 import Badge from "../components/Badge";
 import MonthCalendar, { CALENDAR_ACCENT } from "../components/MonthCalendar";
 import { colors, spacing, type } from "../theme/theme";
 import { listDocuments, listTodos, getDocument } from "../services/api";
+import { onDataChanged } from "../services/dataEvents";
 import { ddayLabel } from "../utils/homeData";
 import { buildCalendarEvents, monthDeadlineCount, dateKeyOf, dateLabel, parseDateKey } from "../utils/calendarData";
 import { ddayTone } from "../utils/dday";
@@ -20,9 +24,13 @@ export default function CalendarScreen({ navigation }) {
   const [documents, setDocuments] = useState([]);
   const [todos, setTodos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const initialLoading = loading && !hasLoaded;
   const [error, setError] = useState("");
   const [openingId, setOpeningId] = useState(null);
   const [reload, setReload] = useState(0);
+
+  useFocusEffect(useCallback(() => onDataChanged(() => setReload((value) => value + 1)), []));
 
   // 화면에 들어올 때마다 최신 마감·할 일을 다시 불러온다 (계획 수정 후 돌아와도 반영)
   useFocusEffect(useCallback(() => {
@@ -33,6 +41,7 @@ export default function CalendarScreen({ navigation }) {
       .then(([docs, items]) => {
         if (!active) return;
         setDocuments(docs);
+        setHasLoaded(true);
         setTodos(items);
       })
       .catch((e) => active && setError(e.message))
@@ -77,11 +86,12 @@ export default function CalendarScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+    <ScreenSurface style={styles.safe} edges={["top"]}>
+      <AppHeader title="캘린더" />
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.topRow}>
           <Text style={styles.summary}>
-            {loading ? "불러오는 중…" : `${month.getMonth() + 1}월 마감 ${monthCount}개`}
+            {initialLoading ? "불러오는 중…" : `${month.getMonth() + 1}월 마감 ${monthCount}개`}
           </Text>
           <Pressable accessibilityRole="button" onPress={goToday} hitSlop={8} style={styles.todayButton}>
             <Text style={styles.todayButtonText}>오늘</Text>
@@ -108,7 +118,7 @@ export default function CalendarScreen({ navigation }) {
 
         <Text style={styles.dayTitle}>{dateLabel(selected)}{selected === todayKey ? " · 오늘" : ""}</Text>
 
-        {loading ? (
+        {initialLoading ? (
           <Card><ActivityIndicator color={CALENDAR_ACCENT} /></Card>
         ) : day.deadlines.length === 0 && day.todos.length === 0 ? (
           <Card><Text style={type.small}>이 날은 마감이나 할 일이 없어요.</Text></Card>
@@ -159,13 +169,13 @@ export default function CalendarScreen({ navigation }) {
           </>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </ScreenSurface>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
-  container: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  container: { ...pageContent, padding: spacing.lg, paddingTop: 0, paddingBottom: 112 },
   topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.md },
   summary: { ...type.bodyStrong, color: colors.muted },
   todayButton: { borderWidth: 1, borderColor: colors.line, borderRadius: 999, paddingHorizontal: spacing.md, paddingVertical: 6, backgroundColor: colors.surface },
