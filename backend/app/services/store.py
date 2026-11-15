@@ -214,11 +214,14 @@ class MemoryStore:
                 PlanSave(steps=plan["steps"], revision=plan["revision"]),
             )
 
-    def mutate_document(self, doc_id, changes):
+    def mutate_document(self, doc_id, changes, expected_updated_at=None):
         with self._lock:
             record = self._data.get(doc_id)
             if not record:
                 raise KeyError(doc_id)
+
+            if expected_updated_at is not None and (record.get("updated_at") or "") != expected_updated_at:
+                raise RevisionConflict("문서가 변경됐어요. 다시 불러온 뒤 수정해 주세요.")
 
             updated = copy.deepcopy(record)
 
@@ -498,7 +501,7 @@ class FirestoreStore:
             key=lambda item: (item.get("doc_title", ""), item.get("order", 0)),
         )
 
-    def mutate_document(self, doc_id, changes):
+    def mutate_document(self, doc_id, changes, expected_updated_at=None):
         from firebase_admin import firestore
         from google.cloud.firestore_v1.base_query import FieldFilter
 
@@ -512,6 +515,8 @@ class FirestoreStore:
                 raise KeyError(doc_id)
 
             record = snap.to_dict()
+            if expected_updated_at is not None and (record.get("updated_at") or "") != expected_updated_at:
+                raise RevisionConflict("문서가 변경됐어요. 다시 불러온 뒤 수정해 주세요.")
             updated = copy.deepcopy(record)
 
             if "title" in changes:
@@ -724,3 +729,24 @@ def get_store(uid=None):
 def forget_memory_user(uid):
     with _store_lock:
         _user_memory_stores.pop(uid, None)
+
+
+def admin_document_summaries():
+    """운영 통계용 메타데이터만 반환하며 원문·분석 내용·계획은 노출하지 않는다."""
+    fields = ["title", "status", "created_at", "updated_at", "error", "source_kind"]
+    if get_settings().storage_backend == "firestore":
+        from firebase_admin import firestore
+        db = firestore.client(app=get_firebase_app())
+        records = []
+        for snap in db.collection_group("documents").select([*fields, "plan.registered"]).stream():
+            parts = snap.reference.path.split("/")
+            if len(parts) == 4 and parts[0] == "users" and parts[2] == "documents":
+                data = snap.to_dict()
+                registered = bool((data.pop("plan", None) or {}).get("registered"))
+                records.append({"ownerUid": parts[1], "documentId": snap.id, **data, "registered": registered})
+        return records
+    with _store_lock:
+        stores = list(_user_memory_stores.items())
+    return [{"ownerUid": uid, "documentId": doc_id, **{key: record.get(key) for key in fields},
+             "registered": bool((record.get("plan") or {}).get("registered"))}
+            for uid, store in stores for doc_id, record in store.list_records()]

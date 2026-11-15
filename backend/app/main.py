@@ -9,6 +9,9 @@ from google.auth.exceptions import GoogleAuthError
 from app.api.routes import router
 from app.api.profiles import router as profiles_router
 from app.api.accounts import router as accounts_router
+from app.api.admin import router as admin_router
+from app.api.admin_crud import router as admin_crud_router
+from app.api.admin_review import router as admin_review_router
 from app.services.account_deletion import cleanup_worker
 from app.services.account_state import AccountDeleting
 from app.config import get_settings
@@ -39,6 +42,9 @@ app.add_middleware(
 app.include_router(router)
 app.include_router(profiles_router)
 app.include_router(accounts_router)
+app.include_router(admin_router)
+app.include_router(admin_crud_router)
+app.include_router(admin_review_router)
 
 
 @app.middleware("http")

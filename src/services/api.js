@@ -32,7 +32,12 @@ export async function request(path, options = {}, config = {}) {
   if (res.ok && config.responseType === "blob") return res.blob();
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const detail = typeof body.detail === "string" ? body.detail : body.detail?.message || JSON.stringify(body.detail ?? body);
+    // FastAPI 검증 오류 배열에는 경로·입력 원본이 들어 있으므로 그대로 화면에 출력하지 않는다.
+    const validationMessage = Array.isArray(body.detail)
+      ? body.detail.find(issue => issue.type === "value_error" && typeof issue.msg === "string")?.msg.replace(/^Value error,\s*/, "")
+        || "요청 정보를 확인하지 못했어요. 화면을 다시 연 뒤 시도해 주세요."
+      : null;
+    const detail = validationMessage || (typeof body.detail === "string" ? body.detail : body.detail?.message || `요청을 처리하지 못했어요 (${res.status}). 잠시 후 다시 시도해 주세요.`);
     const error = new Error(detail || `요청 실패 (${res.status})`);
     error.status = res.status;
     error.documentId = body.detail?.documentId;

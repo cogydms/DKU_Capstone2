@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   todayButtonText: { fontSize: 13, fontWeight: "700", color: CALENDAR_ACCENT },
   errorBox: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm, marginBottom: spacing.md },
   errorText: { ...type.small, color: colors.alert, flex: 1 },
-  dayTitle: { ...type.h2, fontSize: 18, marginTop: spacing.xl, marginBottom: spacing.sm },
+  dayTitle: { ...type.h2, fontSize: 18, marginTop: spacing.lg, marginBottom: spacing.sm },
   groupTitle: { ...type.label, fontSize: 12, marginTop: spacing.sm, marginBottom: spacing.xs },
   listCard: { paddingVertical: spacing.xs, marginBottom: spacing.sm },
   item: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingVertical: spacing.md },

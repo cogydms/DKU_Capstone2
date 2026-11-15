@@ -14,6 +14,9 @@ import ManagementScreen from "../screens/ManagementScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import AccountSettingsScreen from "../screens/AccountSettingsScreen";
+import AdminScreen, { AdminUsersScreen, AdminDocumentsScreen, AdminNoticesScreen } from "../screens/AdminScreen";
+import AdminDocumentReviewScreen from "../screens/AdminDocumentReviewScreen";
+import AnnouncementsScreen from "../screens/AnnouncementsScreen";
 import OnboardingModal from "../components/OnboardingModal";
 import { startDeadlineNotifications } from "../services/notifications";
 import useReducedMotion from "../hooks/useReducedMotion";
@@ -71,6 +74,12 @@ export default function AppNavigator() {
         <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: "알림" }} />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ ...hiddenHeaderOptions, title: "설정" }} />
         <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} options={{ ...hiddenHeaderOptions, title: "계정 관리" }} />
+        <Stack.Screen name="Admin" component={AdminScreen} options={{ title: "관리자 페이지" }} />
+        <Stack.Screen name="AdminUsers" component={AdminUsersScreen} options={{ title: "이용 계정" }} />
+        <Stack.Screen name="AdminDocuments" component={AdminDocumentsScreen} options={{ title: "문서 관리" }} />
+        <Stack.Screen name="AdminDocumentReview" component={AdminDocumentReviewScreen} options={{ title: "문서 검토" }} />
+        <Stack.Screen name="AdminNotices" component={AdminNoticesScreen} options={{ title: "공지 관리" }} />
+        <Stack.Screen name="Announcements" component={AnnouncementsScreen} options={{ title: "공지사항" }} />
       </Stack.Navigator>
       <OnboardingModal />
     </NavigationContainer>

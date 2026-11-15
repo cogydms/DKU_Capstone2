@@ -1,6 +1,6 @@
 import GlassTint from "./GlassTint";
 import { Text } from "./Typography";
-// 날짜 선택용 작은 달력과 일정 개수를 보여주는 월 달력.
+// 날짜 선택용 작은 달력과 마감·할 일 유무를 보여주는 월 달력.
 import React from "react";
 import { View, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -24,7 +24,7 @@ export default function MonthCalendar({ month, onMonthChange, selected, onSelect
   const moveMonth = (offset) => onMonthChange(new Date(year, monthIndex + offset, 1));
 
   return (
-    <View style={styles.panel}>
+    <View style={[styles.panel, showEventCounts && styles.eventPanel]}>
       <GlassTint radius={24} />
       <View style={styles.monthHeader}>
         <Pressable accessibilityRole="button" accessibilityLabel="이전 달" onPress={() => moveMonth(-1)} style={styles.monthButton}>
@@ -38,7 +38,7 @@ export default function MonthCalendar({ month, onMonthChange, selected, onSelect
 
       <View style={styles.weekRow}>
         {Array.from("일월화수목금토").map((day, index) => (
-          <View key={day} style={styles.dayCell}>
+          <View key={day} style={[styles.dayCell, showEventCounts && styles.eventWeekdayCell]}>
             <Text style={[styles.weekday, index === 0 && styles.sunday, index === 6 && styles.saturday]}>{day}</Text>
           </View>
         ))}
@@ -69,12 +69,8 @@ export default function MonthCalendar({ month, onMonthChange, selected, onSelect
                       isToday && styles.todayText, isSelected && styles.selectedText]}>{day}</Text>
                   </View>
                   {showEventCounts ? <View style={styles.eventStripes}>
-                    {ev?.deadlines.map((deadline, eventIndex) => (
-                      <EventStripe key={`deadline-${deadline.id ?? eventIndex}`} kind="deadline" />
-                    ))}
-                    {ev?.todos.map((todo, eventIndex) => (
-                      <EventStripe key={`todo-${todo.id ?? eventIndex}`} kind="todo" />
-                    ))}
+                    {hasDeadline && <EventStripe kind="deadline" />}
+                    {hasTodo && <EventStripe kind="todo" />}
                   </View> : <View style={styles.dots}>
                     {hasDeadline && <View style={[styles.dot, { backgroundColor: isSelected ? "#fff" : CALENDAR_EVENT_COLORS.deadline }]} />}
                     {hasTodo && <View style={[styles.dot, { backgroundColor: isSelected ? "#fff" : CALENDAR_EVENT_COLORS.todo }]} />}
@@ -102,10 +98,12 @@ export default function MonthCalendar({ month, onMonthChange, selected, onSelect
 
 const styles = StyleSheet.create({
   panel: { ...glass, borderRadius: radius.lg, padding: spacing.lg },
+  eventPanel: { width: "100%", maxWidth: 520, alignSelf: "center", padding: spacing.md },
   monthHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.xs },
   monthButton: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   weekRow: { flexDirection: "row" },
   dayCell: { flex: 1, alignItems: "center", justifyContent: "center", minHeight: 46 },
+  eventWeekdayCell: { minHeight: 30 },
   weekday: { ...type.small, fontWeight: "600" },
   sunday: { color: colors.alert },
   saturday: { color: colors.stamp },
@@ -116,10 +114,10 @@ const styles = StyleSheet.create({
   selected: { backgroundColor: colors.ink },
   selectedText: { color: colors.surface, fontWeight: "700" },
   eventWeek: { borderTopWidth: 1, borderTopColor: colors.line },
-  eventDayButton: { maxWidth: 64, minHeight: 82, height: "auto", paddingVertical: 5, paddingHorizontal: 1, justifyContent: "flex-start" },
+  eventDayButton: { maxWidth: 64, height: 56, paddingVertical: 4, paddingHorizontal: 1, justifyContent: "flex-start" },
   dateNumber: { width: 28, height: 28, borderRadius: 9, alignItems: "center", justifyContent: "center" },
-  eventStripes: { width: "100%", gap: 3, marginTop: 4, paddingHorizontal: 3 },
-  eventStripe: { height: 6, borderRadius: 3, borderWidth: 1 },
+  eventStripes: { width: "100%", gap: 3, marginTop: 3, paddingHorizontal: 3 },
+  eventStripe: { height: 5, borderRadius: 3, borderWidth: 1 },
   deadlineStripe: { backgroundColor: CALENDAR_EVENT_COLORS.deadline, borderColor: "#742431" },
   todoStripe: { backgroundColor: CALENDAR_EVENT_COLORS.todo, borderColor: "#216F65" },
   legendStripe: { width: 18 },

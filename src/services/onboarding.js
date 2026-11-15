@@ -1,4 +1,4 @@
-// 첫 실행 안내: 한 번 보면 다시 안 띄우고, 설정의 "앱 소개 다시 보기"로 다시 열 수 있다.
+// 첫 실행 안내: 한 번 보면 다시 안 띄우고, 로그인 화면·설정에서 다시 열 수 있다.
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const DONE_KEY = "ttokdoc.onboarding.done";
@@ -12,7 +12,7 @@ export async function finishOnboarding() {
   try { await AsyncStorage.setItem(DONE_KEY, "yes"); } catch {}
 }
 
-// 설정 화면에서 다시 열 때
+// 로그인 화면 또는 설정에서 다시 열 때
 export function showOnboarding() {
   listeners.forEach((listener) => listener());
 }
