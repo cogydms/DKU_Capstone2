@@ -1,0 +1,58 @@
+name: Render deployment
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  deployments: write
+
+concurrency:
+  group: render-production-deployment
+  cancel-in-progress: true
+
+jobs:
+  report:
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SITE_URL: https://ttokdoc.onrender.com
+      DEPLOYMENT_ENVIRONMENT: Render Production
+    steps:
+      - name: Wait for the commit to go live on Render
+        shell: bash
+        run: |
+          deadline=$((SECONDS + 22 * 60))
+          while (( SECONDS < deadline )); do
+            if curl --fail --silent --max-time 10 \
+              --header 'Cache-Control: no-cache' \
+              "$SITE_URL/deploy-info.json?run=$GITHUB_RUN_ID&attempt=$GITHUB_RUN_ATTEMPT&t=$SECONDS" \
+              | jq -e --arg sha "$GITHUB_SHA" '.commit == $sha' >/dev/null 2>&1; then
+              echo "Render is serving $GITHUB_SHA"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::Render did not serve commit $GITHUB_SHA within 22 minutes."
+          exit 1
+
+      - name: Record the live deployment in GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          endpoint="repos/$GITHUB_REPOSITORY/deployments"
+          deployment=$(gh api --method GET "$endpoint" \
+            -f sha="$GITHUB_SHA" -f environment="$DEPLOYMENT_ENVIRONMENT" -F per_page=1 \
+            --jq '.[0].id // empty')
+          if [[ -z "$deployment" ]]; then
+            deployment=$(jq -n --arg sha "$GITHUB_SHA" --arg env "$DEPLOYMENT_ENVIRONMENT" \
+              '{ref:$sha, environment:$env, auto_merge:false, required_contexts:[], production_environment:true}' \
+              | gh api --method POST "$endpoint" --input - --jq '.id')
+          fi
+          gh api --method POST "$endpoint/$deployment/statuses" \
+            -f state=success -f environment_url="$SITE_URL/" \
+            -f log_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            -f description="Commit verified on the live Render site" > /dev/null
