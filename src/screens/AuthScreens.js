@@ -8,9 +8,11 @@ import AffiliationPicker from "../components/AffiliationPicker";
 import PrimaryButton from "../components/PrimaryButton";
 import AccountDeletionForm from "../components/AccountDeletionForm";
 import GoogleAccountButton from "../components/GoogleAccountButton";
+import OnboardingModal from "../components/OnboardingModal";
 import { useAuth } from "../contexts/AuthContext";
 import useAffiliations from "../hooks/useAffiliations";
 import { googleSignInAvailable, googleSignInUnavailableReason } from "../services/auth";
+import { showOnboarding } from "../services/onboarding";
 import { authErrorMessage, findAffiliation, validateCredentials } from "../utils/authForm";
 import { colors, radius, spacing, type } from "../theme/theme";
 
@@ -66,7 +68,7 @@ export function LoginScreen({ navigation }) {
     catch (failure) { setError(authErrorMessage(failure)); }
     finally { setGoogleStarting(false); }
   };
-  return <AuthScaffold title="로그인" subtitle="똑독과 함께 준비할 일을 차근차근 시작해 보세요.">
+  return <><AuthScaffold title="로그인" subtitle="똑독과 함께 준비할 일을 차근차근 시작해 보세요.">
     <AuthInput label="이메일" placeholder="이메일 주소" keyboardType="email-address" autoComplete="email" textContentType="username" value={email} onChangeText={setEmail} editable={!busy} />
     <AuthInput label="비밀번호" placeholder="비밀번호" password autoComplete="current-password" textContentType="password" value={password} onChangeText={setPassword} editable={!busy} onSubmitEditing={submit} returnKeyType="go" />
     <AuthError message={error || sessionError} />
@@ -77,8 +79,9 @@ export function LoginScreen({ navigation }) {
       disabled={busy || !googleSignInAvailable} onPress={startGoogle} />
     <View style={styles.guestSection}>
       <AuthLink label={guestStarting ? "게스트로 시작하는 중…" : "게스트로 시작하기"} disabled={busy} onPress={startGuest} />
+      <AuthLink label="앱 소개 다시 보기" disabled={busy} onPress={showOnboarding} />
     </View>
-  </AuthScaffold>;
+  </AuthScaffold><OnboardingModal autoShow={false} allowNotificationPermission={false} /></>;
 }
 
 export function SignUpScreen({ navigation }) {

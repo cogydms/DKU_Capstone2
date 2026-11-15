@@ -14,6 +14,7 @@ import Card from "../components/Card";
 import PrimaryButton from "../components/PrimaryButton";
 import AccountDeletionForm from "../components/AccountDeletionForm";
 import AccountSection from "../components/settings/AccountSection";
+import AdminSection from "../components/settings/AdminSection";
 import ReminderTimePicker from "../components/ReminderTimePicker";
 import { useAuth } from "../contexts/AuthContext";
 import { authErrorMessage } from "../utils/authForm";
@@ -114,6 +115,7 @@ export default function SettingsScreen({ navigation }) {
             {/* 계정 */}
             <Text style={styles.sectionTitle}>계정</Text>
             <AccountSection />
+            <AdminSection />
 
             {/* 알림 */}
             <Text style={styles.sectionTitle}>알림</Text>
@@ -185,6 +187,11 @@ export default function SettingsScreen({ navigation }) {
               <Pressable accessibilityRole="button" onPress={showOnboarding}
                 style={({ pressed }) => [styles.infoRow, styles.divider, pressed && styles.pressed]}>
                 <Text style={type.body}>앱 소개 다시 보기</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+              </Pressable>
+              <Pressable accessibilityRole="button" onPress={() => navigation.navigate("Announcements")}
+                style={({ pressed }) => [styles.infoRow, styles.divider, pressed && styles.pressed]}>
+                <Text style={type.body}>공지사항</Text>
                 <Ionicons name="chevron-forward" size={16} color={colors.muted} />
               </Pressable>
               <View style={[styles.infoRow, styles.divider]}>

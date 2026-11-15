@@ -1,8 +1,8 @@
 import { Text } from "./Typography";
-// 첫 실행 안내 (3장). 처음 로그인했을 때 한 번 뜨고, 설정 → 앱 소개 다시 보기로 다시 볼 수 있다.
+// 첫 실행 안내 (3장). 로그인 화면과 설정의 앱 소개 다시 보기에서도 사용한다.
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, Modal, View, ScrollView, Pressable, StyleSheet, useWindowDimensions } from "react-native";
-import ScreenSurface from "./ScreenSurface";
+import { Modal, Alert, View, ScrollView, Pressable, StyleSheet } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import PrimaryButton from "./PrimaryButton";
 import { colors, radius, spacing, type } from "../theme/theme";
@@ -23,34 +23,38 @@ const PAGES = [
   {
     icon: "notifications-outline",
     title: "마감까지\n챙겨 드려요",
-    body: "준비 계획을 등록하면 마감과 할 일을 알려 드려요. 알림을 받을 시점은 설정에서 고를 수 있어요.",
+    body: "준비 계획을 등록하면 문서 마감을 알려 드려요. 알림을 받을 시점은 설정에서 고를 수 있어요.",
   },
 ];
 
-export default function OnboardingModal() {
+export default function OnboardingModal({ autoShow = true, allowNotificationPermission = true }) {
   const [visible, setVisible] = useState(false);
   const [page, setPage] = useState(0);
   const [offerPermission, setOfferPermission] = useState(false);
   const [requesting, setRequesting] = useState(false);
+  const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const scroll = useRef(null);
-  const { width } = useWindowDimensions();
-  const pageWidth = Math.min(width, 480);
+  const pageWidth = viewport.width;
+  const compact = viewport.height > 0 && viewport.height < 620;
 
   useEffect(() => {
     let active = true;
-    shouldShowOnboarding().then((show) => { if (active && show) setVisible(true); });
+    if (autoShow) shouldShowOnboarding().then((show) => { if (active && show) setVisible(true); });
     const off = onShowOnboarding(() => { setPage(0); setVisible(true); });
     return () => { active = false; off(); };
-  }, []);
+  }, [autoShow]);
 
   useEffect(() => {
-    if (!visible || !notificationsSupported) return;
+    if (!visible || !notificationsSupported || !allowNotificationPermission) {
+      setOfferPermission(false);
+      return;
+    }
     let active = true;
     Promise.all([permissionStatus(), isNotificationEnabled()]).then(([status, enabled]) => {
       if (active) setOfferPermission(enabled && ["undetermined", "denied"].includes(status));
     }).catch(() => { if (active) setOfferPermission(false); });
     return () => { active = false; };
-  }, [visible]);
+  }, [visible, allowNotificationPermission]);
 
   const close = () => {
     finishOnboarding();
@@ -67,54 +71,77 @@ export default function OnboardingModal() {
   };
 
   const goTo = (index) => {
+    if (requesting || !pageWidth) return;
     setPage(index);
     scroll.current?.scrollTo({ x: index * pageWidth, animated: true });
   };
 
+  // Modal의 안전 영역을 실제로 측정해 회전/화면 크기 변경 때도 페이지 폭을 맞춘다.
+  useEffect(() => {
+    if (!visible || !pageWidth) return;
+    const frame = requestAnimationFrame(() => scroll.current?.scrollTo({ x: page * pageWidth, animated: false }));
+    return () => cancelAnimationFrame(frame);
+  }, [visible, pageWidth]);
+
   const last = page === PAGES.length - 1;
 
   return (
-    <Modal visible={visible} animationType="fade" onRequestClose={() => { if (!requesting) close(); }}>
-      <ScreenSurface style={styles.safe}>
-        <View style={[styles.frame, { width: pageWidth }]}>
+    <Modal visible={visible} animationType="fade" onShow={() => scroll.current?.scrollTo({ x: 0, animated: false })}
+      onRequestClose={() => { if (!requesting) close(); }}>
+      <SafeAreaProvider style={styles.modalRoot}>
+      <SafeAreaView style={styles.safe} edges={["top", "right", "bottom", "left"]}>
+        <View style={styles.frame} onLayout={({ nativeEvent: { layout } }) => {
+          setViewport(previous => previous.width === layout.width && previous.height === layout.height
+            ? previous : { width: layout.width, height: layout.height });
+        }}>
           <View style={styles.topRow}>
-            {!last ? (
-              <Pressable accessibilityRole="button" onPress={close} hitSlop={8}>
-                <Text style={styles.skip}>건너뛰기</Text>
-              </Pressable>
-            ) : <View />}
+            <Pressable accessibilityRole="button" accessibilityLabel={last ? "앱 소개 닫기" : "앱 소개 건너뛰기"}
+              disabled={requesting} onPress={close} hitSlop={4}
+              style={({ pressed }) => [styles.skipButton, (pressed || requesting) && styles.dim]}>
+              <Text style={styles.skip}>{last ? "닫기" : "건너뛰기"}</Text>
+            </Pressable>
           </View>
 
+          <View style={styles.pager}>
+          {pageWidth > 0 && (
           <ScrollView
             ref={scroll}
             horizontal
             pagingEnabled
+            scrollEnabled={!requesting}
             showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / pageWidth))}
+            onMomentumScrollEnd={(e) => setPage(Math.max(0, Math.min(PAGES.length - 1,
+              Math.round(e.nativeEvent.contentOffset.x / pageWidth))))}
             scrollEventThrottle={16}
-            style={{ flexGrow: 0 }}
+            style={styles.carousel}
+            contentContainerStyle={styles.slides}
           >
             {PAGES.map((item) => (
-              <View key={item.title} style={[styles.page, { width: pageWidth }]}>
-                <View style={styles.iconCircle}>
-                  <Ionicons name={item.icon} size={44} color={colors.stamp} />
+              <ScrollView key={item.title} style={[styles.slide, { width: pageWidth }]}
+                contentContainerStyle={[styles.page, compact && styles.compactPage]}
+                nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                <View style={[styles.iconCircle, compact && styles.compactIcon]}>
+                  <Ionicons name={item.icon} size={compact ? 38 : 44} color={colors.stamp} />
                 </View>
-                <Text style={styles.title}>{item.title}</Text>
+                <Text style={[styles.title, compact && styles.compactTitle]}>{item.title}</Text>
                 <Text style={styles.body}>{item.body}</Text>
-              </View>
+              </ScrollView>
             ))}
           </ScrollView>
+          )}
+          </View>
 
+          <View style={styles.bottom}>
           <View style={styles.dots}>
             {PAGES.map((item, index) => (
               <Pressable key={item.title} accessibilityRole="button" accessibilityLabel={`${index + 1}번째 안내`}
-                onPress={() => goTo(index)} hitSlop={6}>
+                accessibilityState={{ selected: page === index, disabled: requesting }} disabled={requesting}
+                onPress={() => goTo(index)} style={styles.dotButton}>
                 <View style={[styles.dot, page === index && styles.dotOn]} />
               </Pressable>
             ))}
           </View>
 
-          <View style={styles.bottom}>
             {last && offerPermission ? (
               <>
                 <PrimaryButton tone="stamp" label="알림 허용하고 시작하기" disabled={requesting} onPress={allowNotifications} />
@@ -123,30 +150,41 @@ export default function OnboardingModal() {
                 </Pressable>
               </>
             ) : (
-              <PrimaryButton tone="stamp" label={last ? "시작하기" : "다음"} onPress={() => (last ? close() : goTo(page + 1))} />
+              <PrimaryButton tone="stamp" label={last ? "시작하기" : "다음"} disabled={requesting || !pageWidth}
+                onPress={() => (last ? close() : goTo(page + 1))} />
             )}
           </View>
         </View>
-      </ScreenSurface>
+      </SafeAreaView>
+      </SafeAreaProvider>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.paper, alignItems: "center" },
-  frame: { flex: 1 },
-  topRow: { height: 48, flexDirection: "row", justifyContent: "flex-end", alignItems: "center", paddingHorizontal: spacing.lg },
+  modalRoot: { flex: 1, backgroundColor: colors.paper },
+  safe: { flex: 1, backgroundColor: colors.paper },
+  frame: { flex: 1, width: "100%", maxWidth: 480, alignSelf: "center" },
+  topRow: { minHeight: 68, flexDirection: "row", justifyContent: "flex-end", alignItems: "center", paddingHorizontal: spacing.xl, paddingVertical: spacing.sm, zIndex: 1 },
+  skipButton: { minWidth: 100, minHeight: 44, paddingHorizontal: spacing.lg, alignItems: "center", justifyContent: "center", borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
+  dim: { opacity: 0.5 },
   skip: { ...type.bodyStrong, color: colors.muted },
-  page: { paddingHorizontal: spacing.xl, paddingTop: spacing.xxl, alignItems: "center" },
+  pager: { flex: 1, minHeight: 0 },
+  carousel: { flex: 1 }, slides: { alignItems: "stretch" }, slide: { flexGrow: 0, flexShrink: 0 },
+  page: { flexGrow: 1, paddingHorizontal: spacing.xl, paddingVertical: spacing.xl, alignItems: "center", justifyContent: "center" },
+  compactPage: { paddingVertical: spacing.md },
   iconCircle: {
     width: 104, height: 104, borderRadius: 52, backgroundColor: colors.stampSoft,
     alignItems: "center", justifyContent: "center", marginBottom: spacing.xl,
   },
+  compactIcon: { width: 88, height: 88, borderRadius: 44, marginBottom: spacing.lg },
   title: { ...type.display, textAlign: "center", lineHeight: 34, marginBottom: spacing.md },
-  body: { ...type.body, color: colors.muted, textAlign: "center", fontSize: 15, lineHeight: 22 },
-  dots: { flexDirection: "row", justifyContent: "center", gap: spacing.sm, marginTop: spacing.xl },
+  compactTitle: { fontSize: 24, lineHeight: 31 },
+  body: { ...type.body, color: colors.muted, textAlign: "center", fontSize: 15, lineHeight: 23, maxWidth: 350 },
+  dots: { flexDirection: "row", justifyContent: "center", marginBottom: spacing.md },
+  dotButton: { width: 44, height: 44, justifyContent: "center", alignItems: "center" },
   dot: { width: 8, height: 8, borderRadius: radius.pill, backgroundColor: colors.line },
   dotOn: { width: 22, backgroundColor: colors.stamp },
-  bottom: { marginTop: "auto", padding: spacing.lg },
-  later: { alignItems: "center", padding: spacing.sm, marginTop: spacing.xs },
+  bottom: { paddingHorizontal: spacing.xl, paddingTop: spacing.sm, paddingBottom: spacing.lg },
+  later: { minHeight: 44, alignItems: "center", justifyContent: "center", padding: spacing.sm, marginTop: spacing.xs },
 });

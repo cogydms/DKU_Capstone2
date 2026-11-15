@@ -148,3 +148,13 @@ def _profile_store():
 def get_profile_store():
     with _store_lock:
         return _profile_store()
+
+
+def admin_profile_summaries():
+    """관리자 목록에 필요한 프로필 필드만 반환한다."""
+    fields = ["accountType", "collegeId", "departmentId", "collegeName", "departmentName", "createdAt", "updatedAt"]
+    store = get_profile_store()
+    if isinstance(store, FirestoreProfileStore):
+        return [{"uid": snap.id, **snap.to_dict()} for snap in store.db.collection("users").select(fields).stream()]
+    with store.lock:
+        return [{"uid": uid, **{key: profile.get(key) for key in fields}} for uid, profile in store.profiles.items()]
