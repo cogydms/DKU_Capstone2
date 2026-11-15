@@ -101,6 +101,17 @@ npx expo start -c
 
 Cloud Run 서버를 사용하는 경우 로컬 FastAPI 서버를 실행할 필요가 없습니다.
 
+### Render 웹 배포
+
+Render의 `ttokdoc` Static Site에서 브랜치를 `develop`로, Auto-Deploy를 `On Commit`으로 설정합니다.
+Build Command에는 `npm ci && npm run build:render`를, Publish Directory에는 `dist`를 사용합니다.
+웹 빌드에 필요한 기존 환경변수는 Render의 Environment에서 관리합니다.
+
+Render 빌드는 배포 커밋 SHA가 담긴 `/deploy-info.json`을 게시합니다.
+`develop`에 변경이 들어오면 GitHub Actions가 공개 사이트에서 같은 SHA를 확인하고,
+저장소의 **Deployments → Render Production**에 사이트 링크와 성공 상태를 등록합니다.
+Render 빌드가 늦게 완료되면 해당 커밋의 Actions 작업을 다시 실행할 수 있습니다.
+
 ## 6. 백엔드 로컬 실행
 
 로컬 백엔드를 개발하거나 테스트할 때만 필요합니다.
